@@ -36,7 +36,7 @@ const App: React.FC = () => {
     if (role === 'coach' && password === 'coach123') {
       setUserRole('coach');
       setCurrentView('dashboard');
-    } else if (role === 'club' && password === 'club123') {
+    } else if (role === 'club' && password === 'club2025-26') {
       setUserRole('club');
       setCurrentView('dashboard');
     } else if (role === 'player' && playerId && password) {
@@ -60,7 +60,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents' | 'name'> & { name: string }, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'>, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
     const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
 
@@ -90,7 +90,7 @@ const App: React.FC = () => {
     }
 
     const playerToAdd: Player = {
-        ...(newPlayerData as Omit<Player, 'id' | 'photoUrl' | 'documents'>),
+        ...newPlayerData,
         id: `p${Date.now()}`,
         photoUrl: photoUrl,
         name: `${newPlayerData.name} ${newPlayerData.lastName}`,

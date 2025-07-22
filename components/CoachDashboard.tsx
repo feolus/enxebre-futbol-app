@@ -101,30 +101,12 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'> & { age: string, height: string, weight: string, treatments: string, phone: string, email: string, fatherNamePhone: string, motherNamePhone: string, parentEmail: string }, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleSavePlayerUpdate = (updatedPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'>, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
       if (!selectedPlayer) return;
       const fullPlayer: Player = {
         ...selectedPlayer,
         ...updatedPlayerData,
         name: `${updatedPlayerData.name} ${updatedPlayerData.lastName}`,
-        personalInfo: {
-            age: parseInt(updatedPlayerData.age, 10),
-            height: updatedPlayerData.height,
-            weight: updatedPlayerData.weight
-        },
-        medicalInfo: {
-            ...selectedPlayer.medicalInfo,
-            treatments: updatedPlayerData.treatments,
-        },
-        contactInfo: {
-            phone: updatedPlayerData.phone,
-            email: updatedPlayerData.email,
-        },
-        parentInfo: {
-            fatherNamePhone: updatedPlayerData.fatherNamePhone,
-            motherNamePhone: updatedPlayerData.motherNamePhone,
-            parentEmail: updatedPlayerData.parentEmail,
-        }
     };
     props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
     handleCloseSubView();
@@ -467,7 +449,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, evaluations, onCl
 interface TrainingPlannerProps {
   events: CalendarEvent[];
   players: Player[];
-  onAddEvent: (event: CalendarEvent) => void;
+  onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
 }
@@ -525,15 +507,11 @@ const TrainingPlanner: React.FC<TrainingPlannerProps> = ({ events, players, onAd
   };
 
   const handleSaveEvent = (eventData: Omit<CalendarEvent, 'id'>) => {
-    const eventToAdd: CalendarEvent = {
-      ...eventData,
-      id: `ce-${Date.now()}`,
-    };
-    onAddEvent(eventToAdd);
+    onAddEvent(eventData);
     handleCloseModals();
   };
   
-  const handleUpdateEvent = (updatedEvent: CalendarEvent) => {
+  const handleUpdateCurrentEvent = (updatedEvent: CalendarEvent) => {
     onUpdateEvent(updatedEvent);
     handleCloseModals();
   };
@@ -617,7 +595,7 @@ const TrainingPlanner: React.FC<TrainingPlannerProps> = ({ events, players, onAd
         <AddEventModal
           onClose={handleCloseModals}
           onAddEvent={handleSaveEvent}
-          onUpdateEvent={handleUpdateEvent}
+          onUpdateEvent={handleUpdateCurrentEvent}
           players={players}
           selectedDate={selectedDate}
           eventToEdit={eventToEdit}
@@ -708,7 +686,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
   
   useEffect(() => {
     if (isEditMode && eventToEdit) {
-      const { id, type, ...eventData } = eventToEdit;
+      const { id: _id, type, ...eventData } = eventToEdit;
       setEventType(type);
       setFormData(eventData);
       setMainExercises(eventToEdit.mainExercises || []);
@@ -821,7 +799,11 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
     }
   };
   
-  const PlayerList: React.FC<{playerIds: string[], onRemove: (index: number) => void}> = ({playerIds, onRemove}) => (
+  interface PlayerListProps {
+    playerIds: string[];
+    onRemove: (index: number) => void;
+  }
+  const PlayerList: React.FC<PlayerListProps> = ({playerIds, onRemove}) => (
       <div className="space-y-1">
           {playerIds.map((id, index) => {
               const player = players.find(p => p.id === id);

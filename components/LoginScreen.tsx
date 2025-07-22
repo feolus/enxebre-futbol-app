@@ -99,7 +99,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
                 value={password}
                 onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 className={inputStyle}
-                placeholder={role === 'coach' ? "Clave: coach123" : "Clave: club123"}
+                placeholder="Introduce la contraseña"
               />
             </div>
           )}
