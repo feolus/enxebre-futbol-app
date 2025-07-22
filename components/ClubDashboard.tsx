@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Player, CalendarEvent } from '../types';
 import Card from './Card';
 import { DownloadIcon } from './Icons';
@@ -8,7 +8,6 @@ interface ClubDashboardProps {
   calendarEvents: CalendarEvent[];
 }
 
-// Helper function to format a Date object into a YYYY-MM-DD string, ignoring timezone.
 const toYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -26,9 +25,9 @@ const ClubDashboard: React.FC<ClubDashboardProps> = ({ players, calendarEvents }
     );
     const totalActs = activityDates.size;
 
-    players.forEach(p => {
+    players.forEach((p: Player) => {
         let absenceCount = 0;
-        calendarEvents.forEach(event => {
+        calendarEvents.forEach((event: CalendarEvent) => {
             if (event.type === 'injury' && event.playerId === p.id) {
                 const startDate = new Date(event.date + 'T00:00:00');
                 const endDate = event.endDate ? new Date(event.endDate + 'T00:00:00') : startDate;

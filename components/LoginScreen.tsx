@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+import React, { useState, ChangeEvent, FormEvent } from 'react';
 import type { Player } from '../types';
 import Card from './Card';
 
@@ -49,7 +49,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
             <select
               id="role"
               value={role}
-              onChange={(e) => setRole(e.target.value as Role)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value as Role)}
               className={inputStyle}
             >
               <option value="coach">Entrenador</option>
@@ -84,7 +84,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
                     type="password"
                     id="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                     className={inputStyle}
                     placeholder="Tu contraseña"
                 />
@@ -97,7 +97,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 className={inputStyle}
                 placeholder={role === 'coach' ? "Clave: coach123" : "Clave: club123"}
               />

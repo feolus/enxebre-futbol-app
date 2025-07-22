@@ -1,4 +1,4 @@
-import { useState, ChangeEvent, FormEvent } from 'react';
+import React, { useState, ChangeEvent, FormEvent } from 'react';
 import Card from './Card';
 import type { Player, PlayerEvaluation } from '../types';
 
@@ -8,7 +8,6 @@ interface AddEvaluationModalProps {
   onSave: (evaluation: PlayerEvaluation) => void;
 }
 
-// Helper function to format a Date object into a YYYY-MM-DD string, ignoring timezone.
 const toYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

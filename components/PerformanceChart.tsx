@@ -1,20 +1,32 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { PlayerEvaluation } from '../types';
-import Card from './Card';
 
 interface PerformanceChartProps {
   evaluations: PlayerEvaluation[];
   title: string;
 }
 
+// Define a local interface for custom tooltip props to avoid type conflicts with recharts library versions.
+interface CustomTooltipContentProps {
+  active?: boolean;
+  payload?: Array<{
+    color: string;
+    dataKey: string;
+    payload: { [key: string]: any };
+    value: number | string;
+    name: string;
+  }>;
+  label?: string;
+}
+
+
 const PerformanceChart: React.FC<PerformanceChartProps> = ({ evaluations, title }) => {
-  // Define max values for normalization. Speed and Agility are inverted (lower is better).
   const maxMetrics = {
-    agility: { min: 15, max: 25 }, // Assumed range for agility test in seconds
-    speed: { min: 4, max: 6 }, // Assumed range for speed metric
+    agility: { min: 15, max: 25 },
+    speed: { min: 4, max: 6 },
     endurance: 5000,
-    flexibility: 40, // Assumed max for flexibility
+    flexibility: 40,
   };
 
   const data = evaluations.map(e => {
@@ -26,7 +38,6 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ evaluations, title 
       Velocidad: Math.max(0, Math.min(100, speedScore)),
       Resistencia: (e.metrics.endurance / maxMetrics.endurance) * 100,
       Flexibilidad: (e.metrics.flexibility / maxMetrics.flexibility) * 100,
-      // Original values for tooltip
       original_Agilidad: e.metrics.agility,
       original_Velocidad: e.metrics.speed,
       original_Resistencia: e.metrics.endurance,
@@ -34,12 +45,12 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ evaluations, title 
     };
   });
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip: React.FC<CustomTooltipContentProps> = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
         <div className="p-3 bg-gray-900/90 border border-gray-700 rounded-lg shadow-lg backdrop-blur-sm">
           <p className="label text-gray-300 font-bold mb-2">{`${label}`}</p>
-          {payload.map((pld: any) => (
+          {payload.map((pld) => (
             <div key={pld.dataKey} style={{ color: pld.color }} className="flex justify-between items-center text-sm">
               <span>{`${pld.dataKey}:`}</span>
               <span className="font-bold ml-4">

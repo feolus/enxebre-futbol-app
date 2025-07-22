@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import type { TrainingSession } from '../types';
+import type { TrainingSession, Exercise } from '../types';
 
-// Use import.meta.env for Vite environment variables
 const apiKey = import.meta.env.VITE_API_KEY;
 
 if (!apiKey) {
@@ -72,7 +71,7 @@ export const generateTrainingPlan = async (prompt: string): Promise<Partial<Trai
       },
     });
 
-    const text = response.text.trim();
+    const text = response.text?.trim();
     if (!text) {
         console.error("Gemini API returned an empty response.");
         return null;
@@ -80,8 +79,8 @@ export const generateTrainingPlan = async (prompt: string): Promise<Partial<Trai
 
     const generatedPlan = JSON.parse(text);
 
-    // Add unique IDs to the exercises
-    const addIds = (exercises: any[], prefix: string) => exercises.map((ex, i) => ({ ...ex, id: `${prefix}-${Date.now()}-${i}` }));
+    const addIds = (exercises: Omit<Exercise, 'id'>[], prefix: string): Exercise[] => 
+      exercises.map((ex, i) => ({ ...ex, id: `${prefix}-${Date.now()}-${i}` }));
 
     return {
         ...generatedPlan,

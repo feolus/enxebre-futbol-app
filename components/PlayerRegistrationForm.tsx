@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import Card from './Card';
 import type { Player } from '../types';
 import { UsersIcon } from './Icons';
@@ -68,12 +67,12 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         }
     }, [playerToEdit, isEditMode]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
   
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'photo' | 'dniFront' | 'dniBack') => {
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>, fileType: 'photo' | 'dniFront' | 'dniBack') => {
         const { files } = e.target;
         if (files && files.length > 0) {
             const file = files[0];
@@ -96,15 +95,14 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
-        const dataToSave: any = {
+        const dataToSave = {
             ...formData,
             jerseyNumber: parseInt(formData.jerseyNumber, 10) || 0,
-            age: parseInt(String(formData.age), 10) || 0,
         };
         if (isEditMode) {
-            delete dataToSave.password; // Do not send password on edit to prevent overwriting
+            delete (dataToSave as Partial<typeof dataToSave>).password;
         }
         onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
     };
@@ -219,7 +217,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
 
                 <h3 className="text-xl font-semibold text-white mt-4">Documentación</h3>
                 <div className="space-y-4 bg-gray-900/30 p-4 rounded-lg">
-                    {/* Profile Photo */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                         <div className="text-center">
                             {photoPreview ? (
@@ -240,7 +237,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                         </div>
                     </div>
                     
-                    {/* DNI Files */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className={labelStyle}>DNI (Anverso)</label>

@@ -8,6 +8,8 @@ interface StatisticsViewProps {
     players: Player[];
 }
 
+type RankedPlayer = { player?: Player; count: number };
+
 const StatisticsView: React.FC<StatisticsViewProps> = ({ events, players }) => {
     
     const rankings = useMemo(() => {
@@ -23,13 +25,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ events, players }) => {
             });
         });
 
-        const getRankedList = (counts: { [key: string]: number }) => {
+        const getRankedList = (counts: { [key: string]: number }): RankedPlayer[] => {
             return Object.entries(counts)
                 .map(([playerId, count]) => ({
                     player: players.find(p => p.id === playerId),
                     count
                 }))
-                .filter(item => !!item.player)
+                .filter((item): item is RankedPlayer & { player: Player } => !!item.player)
                 .sort((a, b) => b.count - a.count);
         };
 
@@ -52,10 +54,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ events, players }) => {
         if (ourScore < theirScore) return 'text-red-400 bg-red-500/10';
         return 'text-yellow-400 bg-yellow-500/10';
     };
-
-    type RankedPlayer = { player?: Player; count: number };
     
-    const RankingTable: React.FC<{title: string, data: RankedPlayer[], metricName: string}> = ({title, data, metricName}) => (
+    interface RankingTableProps {
+      title: string;
+      data: RankedPlayer[];
+      metricName: string;
+    }
+    const RankingTable: React.FC<RankingTableProps> = ({title, data, metricName}) => (
         <Card className="p-6 flex-1">
             <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
             <div className="overflow-x-auto">

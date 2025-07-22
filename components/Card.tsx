@@ -1,4 +1,4 @@
-import { ReactNode, MouseEventHandler } from 'react';
+import React, { ReactNode, MouseEventHandler } from 'react';
 
 interface CardProps {
   children: ReactNode;

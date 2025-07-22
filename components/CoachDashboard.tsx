@@ -1,19 +1,17 @@
-
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, EvaluationMetric, Exercise } from '../types';
 import Card from './Card';
 import PerformanceChart from './PerformanceChart';
 import PlayerRegistrationForm from './PlayerRegistrationForm';
 import AddEvaluationModal from './AddEvaluationModal';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, PlusIcon, MapPinIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, HomeIcon, PlaneIcon, ShieldCheckIcon, KeyIcon } from './Icons';
+import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, MapPinIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, ShieldCheckIcon, KeyIcon } from './Icons';
 import StatisticsView from './StatisticsView';
 import UserManagementView from './UserManagementView';
 
 type Tab = 'club' | 'planner' | 'comparison' | 'matchday' | 'statistics' | 'userManagement';
 type View = 'list' | 'profile' | 'edit';
 
-// Helper function to format a Date object into a YYYY-MM-DD string, ignoring timezone.
 const toYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -40,7 +38,6 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
 
-  // Derive upcoming match from calendarEvents
   const upcomingMatch = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -104,7 +101,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleSavePlayerUpdate = (updatedPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'> & { age: string, height: string, weight: string, treatments: string, phone: string, email: string, fatherNamePhone: string, motherNamePhone: string, parentEmail: string }, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
       if (!selectedPlayer) return;
       const fullPlayer: Player = {
         ...selectedPlayer,
@@ -211,7 +208,12 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   );
 };
 
-const Sidebar: React.FC<{ activeTab: Tab; setActiveTab: (tab: Tab) => void }> = ({ activeTab, setActiveTab }) => {
+interface SidebarProps {
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
   const navItems: { id: Tab; name: string; icon: React.ElementType }[] = [
     { id: 'club', name: 'Equipo', icon: UsersIcon },
     { id: 'planner', name: 'Planificador', icon: CalendarIcon },
@@ -260,10 +262,10 @@ const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPl
     );
     const totalActivities = activityDates.size;
 
-    players.forEach(p => {
+    players.forEach((p: Player) => {
         let absenceCount = 0;
         
-        calendarEvents.forEach(event => {
+        calendarEvents.forEach((event: CalendarEvent) => {
             if (event.type === 'injury' && event.playerId === p.id) {
                 const startDate = new Date(event.date + 'T00:00:00');
                 const endDate = event.endDate ? new Date(event.endDate + 'T00:00:00') : startDate;
@@ -320,7 +322,7 @@ const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPl
               type="text"
               placeholder="Buscar jugadores"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 pl-12 pr-4 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
           />
       </div>
@@ -370,10 +372,10 @@ const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPl
                          <button onClick={() => onSelectPlayer(player)} title="Ver Perfil" className="p-1.5 text-gray-400 hover:text-cyan-400 rounded-md hover:bg-gray-700 transition-colors">
                             <UsersIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); onEditPlayer(player); }} title="Editar" className="p-1.5 text-gray-400 hover:text-yellow-400 rounded-md hover:bg-gray-700 transition-colors">
+                        <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEditPlayer(player); }} title="Editar" className="p-1.5 text-gray-400 hover:text-yellow-400 rounded-md hover:bg-gray-700 transition-colors">
                             <EditIcon className="w-5 h-5" />
                         </button>
-                        <button onClick={(e) => { e.stopPropagation(); onDeletePlayer(player.id); }} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-700 transition-colors">
+                        <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeletePlayer(player.id); }} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-gray-700 transition-colors">
                             <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
@@ -394,8 +396,15 @@ const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPl
   );
 };
 
+interface PlayerProfileProps {
+  player: Player;
+  evaluations: PlayerEvaluation[];
+  onClose: () => void;
+  onOpenEvalModal: () => void;
+  onMarkAsActive: (player: Player) => void;
+}
 
-const PlayerProfile: React.FC<{ player: Player; evaluations: PlayerEvaluation[]; onClose: () => void; onOpenEvalModal: () => void; onMarkAsActive: (player: Player) => void; }> = ({ player, evaluations, onClose, onOpenEvalModal, onMarkAsActive }) => (
+const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, evaluations, onClose, onOpenEvalModal, onMarkAsActive }) => (
   <Card className="p-6">
     <div className="flex justify-between items-start">
         <div className="flex items-center space-x-4">
@@ -455,13 +464,15 @@ const PlayerProfile: React.FC<{ player: Player; evaluations: PlayerEvaluation[];
   </Card>
 );
 
-const TrainingPlanner: React.FC<{
+interface TrainingPlannerProps {
   events: CalendarEvent[];
   players: Player[];
   onAddEvent: (event: CalendarEvent) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
-}> = ({ events, players, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
+}
+
+const TrainingPlanner: React.FC<TrainingPlannerProps> = ({ events, players, onAddEvent, onUpdateEvent, onDeleteEvent }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [eventToEdit, setEventToEdit] = useState<CalendarEvent | null>(null);
@@ -472,7 +483,7 @@ const TrainingPlanner: React.FC<{
     const d = new Date(date);
     d.setUTCHours(0,0,0,0);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Asume que la semana empieza el lunes
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.setDate(diff));
   };
 
@@ -602,19 +613,19 @@ const TrainingPlanner: React.FC<{
           </div>
       </div>
 
-      {(selectedDate || eventToEdit) && (
+      {selectedDate && (
         <AddEventModal
           onClose={handleCloseModals}
           onAddEvent={handleSaveEvent}
           onUpdateEvent={handleUpdateEvent}
           players={players}
-          selectedDate={selectedDate!}
+          selectedDate={selectedDate}
           eventToEdit={eventToEdit}
         />
       )}
       {eventToDelete && (
         <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4" onClick={() => setEventToDelete(null)}>
-            <Card className="w-full max-w-sm p-6 text-center" onClick={e => e.stopPropagation()}>
+            <Card className="w-full max-w-sm p-6 text-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold text-white mb-2">Confirmar Eliminación</h3>
                 <p className="text-gray-300 mb-6">¿Estás seguro de que quieres eliminar este evento?</p>
                 <div className="flex justify-center gap-4">
@@ -632,12 +643,14 @@ const TrainingPlanner: React.FC<{
   );
 };
 
-const CalendarEventItem: React.FC<{
+interface CalendarEventItemProps {
   event: CalendarEvent;
   onEdit: () => void;
   onDelete: () => void;
-}> = ({ event, onEdit, onDelete }) => {
-    const eventStyles: Record<CalendarEventType, { icon: React.ElementType, color: string }> = {
+}
+
+const CalendarEventItem: React.FC<CalendarEventItemProps> = ({ event, onEdit, onDelete }) => {
+    const eventStyles: Record<CalendarEventType, { icon: React.ElementType; color: string }> = {
         training: { icon: ActivityIcon, color: 'cyan' },
         match: { icon: ShieldIcon, color: 'green' },
         injury: { icon: HeartPulseIcon, color: 'red' },
@@ -649,14 +662,14 @@ const CalendarEventItem: React.FC<{
     if (!styleInfo) return null;
     
     const { icon: Icon, color } = styleInfo;
-    const colorClasses = {
+    const colorClasses: Record<string, string> = {
       cyan: 'border-cyan-500 text-cyan-300 bg-cyan-500/10',
       green: 'border-green-500 text-green-300 bg-green-500/10',
       red: 'border-red-500 text-red-300 bg-red-500/10',
       yellow: 'border-yellow-500 text-yellow-300 bg-yellow-500/10',
       purple: 'border-purple-500 text-purple-300 bg-purple-500/10',
     };
-    const [borderColor, textColor, bgColor] = colorClasses[color as keyof typeof colorClasses].split(' ');
+    const [borderColor, textColor, bgColor] = colorClasses[color].split(' ');
 
     return (
         <div className={`relative group p-1.5 rounded-md text-xs ${bgColor} border-l-2 ${borderColor}`}>
@@ -665,24 +678,26 @@ const CalendarEventItem: React.FC<{
                 <p className="text-gray-200 font-medium leading-tight pr-8">{event.title}</p>
             </div>
              <div className="absolute top-1 right-1 hidden group-hover:flex bg-gray-900/50 rounded-sm shadow-lg">
-                <button onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar Evento" className="p-1 text-gray-400 hover:text-yellow-400 transition-colors"><EditIcon className="w-3.5 h-3.5" /></button>
-                <button onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Eliminar Evento" className="p-1 text-gray-400 hover:text-red-400 transition-colors"><TrashIcon className="w-3.5 h-3.5" /></button>
+                <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onEdit(); }} title="Editar Evento" className="p-1 text-gray-400 hover:text-yellow-400 transition-colors"><EditIcon className="w-3.5 h-3.5" /></button>
+                <button onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDelete(); }} title="Eliminar Evento" className="p-1 text-gray-400 hover:text-red-400 transition-colors"><TrashIcon className="w-3.5 h-3.5" /></button>
             </div>
         </div>
     );
 };
 
-const AddEventModal: React.FC<{
+interface AddEventModalProps {
   onClose: () => void;
   onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   players: Player[];
   selectedDate: Date;
   eventToEdit?: CalendarEvent | null;
-}> = ({ onClose, onAddEvent, onUpdateEvent, players, selectedDate, eventToEdit }) => {
+}
+
+const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUpdateEvent, players, selectedDate, eventToEdit }) => {
   const isEditMode = !!eventToEdit;
   const [eventType, setEventType] = useState<CalendarEventType>(isEditMode ? eventToEdit.type : 'training');
-  const [formData, setFormData] = useState<any>({ locationType: 'home' });
+  const [formData, setFormData] = useState<Partial<CalendarEvent>>({ locationType: 'home' });
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [scorers, setScorers] = useState<string[]>([]);
   const [assists, setAssists] = useState<string[]>([]);
@@ -705,10 +720,9 @@ const AddEventModal: React.FC<{
         setSelectedPlayerIds(eventToEdit.playerIds || []);
       }
     } else {
-        // Reset form for new event
         setEventType('training');
         setFormData({ locationType: 'home' });
-        setSelectedPlayerIds(players.map(p => p.id)); // Select all by default for new training
+        setSelectedPlayerIds(players.map(p => p.id));
         setScorers([]);
         setAssists([]);
         setMainExercises([]);
@@ -724,7 +738,7 @@ const AddEventModal: React.FC<{
   const inputStyle = "w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-sm";
   const labelStyle = "block text-sm font-medium text-gray-300 mb-1";
   
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   
@@ -746,7 +760,7 @@ const AddEventModal: React.FC<{
       }
   }
 
-  const handleCurrentExerciseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCurrentExerciseChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setCurrentExercise(prev => ({ ...prev, [name]: value }));
   };
@@ -769,40 +783,41 @@ const AddEventModal: React.FC<{
   };
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const date = toYYYYMMDD(selectedDate);
     
-    if (formData.endDate === '') {
-        delete formData.endDate;
+    let finalFormData = { ...formData };
+    if (finalFormData.endDate === '') {
+        delete finalFormData.endDate;
     }
 
-    let title = formData.title;
+    let title = finalFormData.title;
     switch (eventType) {
       case 'match':
-        title = `Partido vs ${formData.opponent}`;
+        title = `Partido vs ${finalFormData.opponent}`;
         break;
       case 'matchResult':
-        title = `Resultado: vs ${formData.opponent}`;
+        title = `Resultado: vs ${finalFormData.opponent}`;
         break;
       case 'injury':
-        const player = players.find(p => p.id === formData.playerId);
+        const player = players.find(p => p.id === finalFormData.playerId);
         title = `Lesión: ${player?.name || ''}`;
         break;
       case 'personal':
         title = `Ausencia Personal (${selectedPlayerIds.length} jug.)`;
         break;
       case 'training':
-        title = formData.title || 'Entrenamiento';
+        title = finalFormData.title || 'Entrenamiento';
         break;
     }
     
-    const eventData = { ...formData, date, type: eventType, title, scorers, assists, playerIds: selectedPlayerIds, mainExercises };
+    const eventData = { ...finalFormData, date, type: eventType, title, scorers, assists, playerIds: selectedPlayerIds, mainExercises };
     
-    if (isEditMode) {
+    if (isEditMode && eventToEdit) {
       onUpdateEvent({ ...eventToEdit, ...eventData });
     } else {
-      onAddEvent(eventData);
+      onAddEvent(eventData as Omit<CalendarEvent, 'id'>);
     }
   };
   
@@ -822,7 +837,7 @@ const AddEventModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <form onSubmit={handleSubmit} className="p-6">
                 <h3 className="text-lg font-bold text-white mb-4">
                     {isEditMode ? 'Editar Evento' : `Añadir Evento para ${selectedDate.toLocaleDateString('es-ES', {day: 'numeric', month: 'long'})}`}
@@ -830,7 +845,7 @@ const AddEventModal: React.FC<{
                 <div className="space-y-4">
                     <div>
                         <label className={labelStyle}>Tipo de Evento</label>
-                        <select name="type" value={eventType} onChange={e => setEventType(e.target.value as CalendarEventType)} className={inputStyle}>
+                        <select name="type" value={eventType} onChange={(e: ChangeEvent<HTMLSelectElement>) => setEventType(e.target.value as CalendarEventType)} className={inputStyle}>
                             <option value="training">Entrenamiento</option>
                             <option value="match">Partido</option>
                             <option value="matchResult">Resultado de Partido</option>
@@ -966,7 +981,7 @@ const AddEventModal: React.FC<{
                                     <input type="text" name="meetingPoint" value={formData.meetingPoint || ''} onChange={handleChange} className={inputStyle} required />
                                </div>
                            </>
-                           ) : ( // matchResult
+                           ) : (
                             <div className="col-span-2 space-y-4">
                                <div>
                                    <label htmlFor="result" className={labelStyle}>Resultado (Ej: 3-1)</label>
@@ -976,25 +991,25 @@ const AddEventModal: React.FC<{
                                <div>
                                    <label className={labelStyle}>Goleadores</label>
                                    <div className="flex gap-2">
-                                       <select value={tempScorer} onChange={e => setTempScorer(e.target.value)} className={inputStyle}>
+                                       <select value={tempScorer} onChange={(e: ChangeEvent<HTMLSelectElement>) => setTempScorer(e.target.value)} className={inputStyle}>
                                            <option value="">Selecciona jugador...</option>
                                            {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                        </select>
                                        <button type="button" onClick={() => handleAddToList('scorer')} className="px-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md text-sm">Añadir</button>
                                    </div>
-                                   <div className="mt-2"><PlayerList playerIds={scorers} onRemove={(index) => handleRemoveFromList('scorer', index)} /></div>
+                                   <div className="mt-2"><PlayerList playerIds={scorers} onRemove={(index: number) => handleRemoveFromList('scorer', index)} /></div>
                                </div>
 
                                <div>
                                    <label className={labelStyle}>Asistentes</label>
                                    <div className="flex gap-2">
-                                       <select value={tempAssister} onChange={e => setTempAssister(e.target.value)} className={inputStyle}>
+                                       <select value={tempAssister} onChange={(e: ChangeEvent<HTMLSelectElement>) => setTempAssister(e.target.value)} className={inputStyle}>
                                            <option value="">Selecciona jugador...</option>
                                            {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                        </select>
                                        <button type="button" onClick={() => handleAddToList('assist')} className="px-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-md text-sm">Añadir</button>
                                    </div>
-                                   <div className="mt-2"><PlayerList playerIds={assists} onRemove={(index) => handleRemoveFromList('assist', index)} /></div>
+                                   <div className="mt-2"><PlayerList playerIds={assists} onRemove={(index: number) => handleRemoveFromList('assist', index)} /></div>
                                </div>
                             </div>
                            )}
@@ -1014,7 +1029,12 @@ const AddEventModal: React.FC<{
   );
 };
 
-const ComparisonView: React.FC<{ players: Player[], evaluations: PlayerEvaluation[] }> = ({ players, evaluations }) => {
+interface ComparisonViewProps {
+  players: Player[];
+  evaluations: PlayerEvaluation[];
+}
+
+const ComparisonView: React.FC<ComparisonViewProps> = ({ players, evaluations }) => {
     const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
 
     const handlePlayerToggle = (playerId: string) => {
@@ -1053,7 +1073,6 @@ const ComparisonView: React.FC<{ players: Player[], evaluations: PlayerEvaluatio
             }
         });
     
-    // Transpose data for Radar chart
     const radarDataMetrics = ['Agilidad', 'Velocidad', 'Resistencia', 'Flexibilidad'];
     const radarData = radarDataMetrics.map(metric => {
         const entry: { metric: string; [key: string]: string | number } = { metric };
@@ -1094,7 +1113,7 @@ const ComparisonView: React.FC<{ players: Player[], evaluations: PlayerEvaluatio
                             </defs>
                             <PolarGrid stroke="#4A5568" />
                             <PolarAngleAxis dataKey="metric" stroke="#A0AEC0" fontSize={14} />
-                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#A0AEC0" tickFormatter={(tick) => `${tick}%`} />
+                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#A0AEC0" tickFormatter={(tick: number) => `${tick}%`} />
                             <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(31, 41, 55, 0.8)', borderColor: '#4A5568', borderRadius: '0.5rem' }} />
                             <Legend />
                             {chartData.map((player, index) => (
@@ -1109,12 +1128,14 @@ const ComparisonView: React.FC<{ players: Player[], evaluations: PlayerEvaluatio
     );
 };
 
-const MatchDayView: React.FC<{ 
-    players: Player[], 
-    match: CalendarEvent | undefined, 
-    setSquad: (eventId: string, squad: { calledUp: string[], notCalledUp: string[] }) => void,
-    calendarEvents: CalendarEvent[]
-}> = ({ players, match, setSquad, calendarEvents }) => {
+interface MatchDayViewProps {
+    players: Player[];
+    match: CalendarEvent | undefined;
+    setSquad: (eventId: string, squad: { calledUp: string[]; notCalledUp: string[] }) => void;
+    calendarEvents: CalendarEvent[];
+}
+
+const MatchDayView: React.FC<MatchDayViewProps> = ({ players, match, setSquad, calendarEvents }) => {
     
     const unavailablePlayersMap = useMemo(() => {
         if (!match) return new Map();
@@ -1182,11 +1203,12 @@ const MatchDayView: React.FC<{
     
     const matchDate = new Date(match.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const PlayerItem: React.FC<{
+    interface PlayerItemProps {
         player: Player;
         listType: 'available' | 'calledUp' | 'notCalledUp' | 'unavailable';
         reason?: string;
-    }> = ({ player, listType, reason }) => (
+    }
+    const PlayerItem: React.FC<PlayerItemProps> = ({ player, listType, reason }) => (
         <div className="flex items-center justify-between p-2 bg-gray-700/60 rounded-lg animate-fade-in">
             <div className="flex items-center gap-3">
                 <img src={player.photoUrl} className="w-8 h-8 rounded-full" alt={player.name}/>

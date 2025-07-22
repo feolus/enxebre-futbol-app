@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Player, PlayerEvaluation, CalendarEvent, Exercise, TrainingSession } from '../types';
+import type { Player, CalendarEvent, Exercise, TrainingSession } from '../types';
 import { mockEvaluations } from '../data/mockData';
 import Card from './Card';
 import PerformanceChart from './PerformanceChart';
@@ -21,7 +21,11 @@ const toYYYYMMDD = (date: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
-const ExerciseDetail: React.FC<{ exercise: Exercise; type: string }> = ({ exercise, type }) => (
+interface ExerciseDetailProps {
+  exercise: Exercise;
+  type: string;
+}
+const ExerciseDetail: React.FC<ExerciseDetailProps> = ({ exercise, type }) => (
     <div className="py-3 sm:py-4">
         <div className="flex items-center space-x-4">
             <div className="flex-shrink-0">
@@ -44,8 +48,10 @@ const ExerciseDetail: React.FC<{ exercise: Exercise; type: string }> = ({ exerci
     </div>
 );
 
-
-const TrainingSessionView: React.FC<{ event: CalendarEvent }> = ({ event }) => {
+interface TrainingSessionViewProps {
+  event: CalendarEvent;
+}
+const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
     const [activeTab, setActiveTab] = useState<'material' | 'warmup' | 'main' | 'cooldown'>('material');
 
     const tabButtonStyle = (isActive: boolean) =>
@@ -112,7 +118,7 @@ const TrainingSessionView: React.FC<{ event: CalendarEvent }> = ({ event }) => {
           {activeTab === 'main' && (
              <div className="flow-root">
                 <ul role="list" className="divide-y divide-gray-700 -my-3">
-                    {mainExercises.map(ex => <ExerciseDetail key={ex.id} exercise={ex} type="main" />)}
+                    {mainExercises.map((ex: Exercise) => <ExerciseDetail key={ex.id} exercise={ex} type="main" />)}
                 </ul>
                 {mainExercises.length === 0 && (
                     <p className="text-center text-sm text-gray-500 pt-8">No hay ejercicios principales asignados para esta sesión.</p>
@@ -173,7 +179,7 @@ const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, m
     const totalActs = activityDates.size;
     
     let absenceCount = 0;
-    calendarEvents.forEach(event => {
+    calendarEvents.forEach((event: CalendarEvent) => {
       if (event.type === 'injury' && event.playerId === player.id) {
         const startDate = new Date(event.date + 'T00:00:00');
         const endDate = event.endDate ? new Date(event.endDate + 'T00:00:00') : startDate;

@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent } from 'react';
 import type { Player } from '../types';
 import Card from './Card';
 import { EditIcon } from './Icons';
@@ -59,7 +58,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ players, onUpda
                                         <input
                                             type="text"
                                             value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
+                                            onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                                             className="bg-gray-900 border border-cyan-500 rounded-md py-1 px-2 text-white w-full"
                                             autoFocus
                                         />
