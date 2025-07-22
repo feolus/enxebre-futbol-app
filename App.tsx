@@ -1,5 +1,4 @@
-
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import CoachDashboard from './components/CoachDashboard';
 import PlayerDashboard from './components/PlayerDashboard';
 import ClubDashboard from './components/ClubDashboard';
@@ -30,7 +29,7 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>(mockPlayers);
   const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>(mockEvaluations);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(mockCalendarEvents);
-  const [trainingSessions, setTrainingSessions] = useState<TrainingSession[]>(mockTrainingSessions);
+  const [trainingSessions] = useState<TrainingSession[]>(mockTrainingSessions);
 
   const handleLogin = (role: 'coach' | 'club' | 'player', password?: string, playerId?: string) => {
     setAuthError('');
@@ -61,7 +60,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'>, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
     const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
 
@@ -96,25 +95,6 @@ const App: React.FC = () => {
         photoUrl: photoUrl,
         name: `${newPlayerData.name} ${newPlayerData.lastName}`,
         documents: documents,
-        personalInfo: {
-            age: parseInt(newPlayerData.age, 10),
-            height: newPlayerData.height,
-            weight: newPlayerData.weight
-        },
-        medicalInfo: {
-            status: 'Activo',
-            notes: 'Nuevo jugador registrado.',
-            treatments: newPlayerData.treatments,
-        },
-        contactInfo: {
-            phone: newPlayerData.phone,
-            email: newPlayerData.email,
-        },
-        parentInfo: {
-            fatherNamePhone: newPlayerData.fatherNamePhone,
-            motherNamePhone: newPlayerData.motherNamePhone,
-            parentEmail: newPlayerData.parentEmail,
-        }
     };
     setPlayers(prev => [...prev, playerToAdd]);
     setCurrentView('login');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import Card from './Card';
 import type { Player, PlayerEvaluation } from '../types';
 
@@ -25,13 +25,13 @@ const AddEvaluationModal: React.FC<AddEvaluationModalProps> = ({ player, onClose
     flexibility: 15,
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     const isMetric = ['agility', 'speed', 'endurance', 'flexibility'].includes(name);
     setFormData(prev => ({ ...prev, [name]: isMetric ? parseFloat(value) : value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const newEvaluation: PlayerEvaluation = {
       playerId: player.id,
@@ -52,7 +52,7 @@ const AddEvaluationModal: React.FC<AddEvaluationModalProps> = ({ player, onClose
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={onClose}>
-      <Card className="w-full max-w-lg" onClick={e => e.stopPropagation()}>
+      <Card className="w-full max-w-lg" onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
         <form onSubmit={handleSubmit} className="p-6">
           <h3 className="text-lg font-bold text-white mb-4">
             Registrar Evaluación para <span className="text-cyan-400">{player.name}</span>

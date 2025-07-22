@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import type { Player } from '../types';
 import Card from './Card';
 
@@ -16,7 +16,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
   const [password, setPassword] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(players[0]?.id || '');
 
-  const handlePlayerSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handlePlayerSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
       const value = e.target.value;
       if (value === 'register_new') {
           onSwitchToRegister();
@@ -25,7 +25,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
       }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (role === 'player') {
       onLogin(role, password, selectedPlayerId);

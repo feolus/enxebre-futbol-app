@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import type { Player, CalendarEvent } from '../types';
 import Card from './Card';
 import { DownloadIcon } from './Icons';

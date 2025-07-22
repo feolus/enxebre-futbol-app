@@ -1,10 +1,9 @@
-
-import React from 'react';
+import { ReactNode, MouseEventHandler } from 'react';
 
 interface CardProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
-  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onClick?: MouseEventHandler<HTMLDivElement>;
 }
 
 const Card: React.FC<CardProps> = ({ children, className = '', onClick }) => {
