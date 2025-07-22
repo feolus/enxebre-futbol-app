@@ -25,9 +25,9 @@ const ClubDashboard: React.FC<ClubDashboardProps> = ({ players, calendarEvents }
     );
     const totalActs = activityDates.size;
 
-    players.forEach((p: Player) => {
+    players.forEach((p) => {
         let absenceCount = 0;
-        calendarEvents.forEach((event: CalendarEvent) => {
+        calendarEvents.forEach((event) => {
             if (event.type === 'injury' && event.playerId === p.id) {
                 const startDate = new Date(event.date + 'T00:00:00');
                 const endDate = event.endDate ? new Date(event.endDate + 'T00:00:00') : startDate;

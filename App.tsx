@@ -60,7 +60,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'>, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
     const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
 
@@ -90,11 +90,37 @@ const App: React.FC = () => {
     }
 
     const playerToAdd: Player = {
-        ...newPlayerData,
         id: `p${Date.now()}`,
         photoUrl: photoUrl,
-        name: `${newPlayerData.name} ${newPlayerData.lastName}`,
         documents: documents,
+        name: `${newPlayerData.name} ${newPlayerData.lastName}`,
+        lastName: newPlayerData.lastName,
+        nickname: newPlayerData.nickname,
+        idNumber: newPlayerData.idNumber,
+        jerseyNumber: newPlayerData.jerseyNumber,
+        position: newPlayerData.position,
+        previousClub: newPlayerData.previousClub,
+        observations: newPlayerData.observations,
+        password: newPlayerData.password,
+        personalInfo: {
+            age: parseInt(newPlayerData.age, 10) || 0,
+            height: newPlayerData.height,
+            weight: newPlayerData.weight,
+        },
+        medicalInfo: {
+            status: 'Activo',
+            notes: '',
+            treatments: newPlayerData.treatments,
+        },
+        contactInfo: {
+            email: newPlayerData.email,
+            phone: newPlayerData.phone,
+        },
+        parentInfo: {
+            fatherNamePhone: newPlayerData.fatherNamePhone,
+            motherNamePhone: newPlayerData.motherNamePhone,
+            parentEmail: newPlayerData.parentEmail,
+        },
     };
     setPlayers(prev => [...prev, playerToAdd]);
     setCurrentView('login');
@@ -163,8 +189,9 @@ const App: React.FC = () => {
     setEvaluations(prev => [...prev, newEvaluation]);
   };
   
-  const handleAddEvent = (newEvent: CalendarEvent) => {
-    setCalendarEvents(prev => [...prev, newEvent]);
+  const handleAddEvent = (newEvent: Omit<CalendarEvent, 'id'>) => {
+    const eventWithId: CalendarEvent = { ...newEvent, id: `ce-${Date.now()}` };
+    setCalendarEvents(prev => [...prev, eventWithId]);
   };
 
   const handleUpdateEvent = (updatedEvent: CalendarEvent) => {

@@ -23,7 +23,7 @@ interface CoachDashboardProps {
   players: Player[];
   evaluations: PlayerEvaluation[];
   calendarEvents: CalendarEvent[];
-  onAddEvent: (event: CalendarEvent) => void;
+  onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
   onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => void;
@@ -101,12 +101,40 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents'>, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleSavePlayerUpdate = (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
       if (!selectedPlayer) return;
+      
       const fullPlayer: Player = {
         ...selectedPlayer,
-        ...updatedPlayerData,
         name: `${updatedPlayerData.name} ${updatedPlayerData.lastName}`,
+        lastName: updatedPlayerData.lastName,
+        nickname: updatedPlayerData.nickname,
+        idNumber: updatedPlayerData.idNumber,
+        jerseyNumber: updatedPlayerData.jerseyNumber,
+        position: updatedPlayerData.position,
+        previousClub: updatedPlayerData.previousClub,
+        observations: updatedPlayerData.observations,
+        personalInfo: {
+            ...selectedPlayer.personalInfo,
+            age: parseInt(updatedPlayerData.age, 10) || 0,
+            height: updatedPlayerData.height,
+            weight: updatedPlayerData.weight,
+        },
+        medicalInfo: {
+            ...selectedPlayer.medicalInfo,
+            treatments: updatedPlayerData.treatments,
+        },
+        contactInfo: {
+            ...selectedPlayer.contactInfo,
+            email: updatedPlayerData.email,
+            phone: updatedPlayerData.phone,
+        },
+        parentInfo: {
+            ...selectedPlayer.parentInfo,
+            fatherNamePhone: updatedPlayerData.fatherNamePhone,
+            motherNamePhone: updatedPlayerData.motherNamePhone,
+            parentEmail: updatedPlayerData.parentEmail,
+        },
     };
     props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
     handleCloseSubView();
@@ -675,7 +703,7 @@ interface AddEventModalProps {
 const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUpdateEvent, players, selectedDate, eventToEdit }) => {
   const isEditMode = !!eventToEdit;
   const [eventType, setEventType] = useState<CalendarEventType>(isEditMode ? eventToEdit.type : 'training');
-  const [formData, setFormData] = useState<Partial<CalendarEvent>>({ locationType: 'home' });
+  const [formData, setFormData] = useState<Partial<Omit<CalendarEvent, 'id' | 'type'>>>({ locationType: 'home' });
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
   const [scorers, setScorers] = useState<string[]>([]);
   const [assists, setAssists] = useState<string[]>([]);
@@ -790,12 +818,12 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
         break;
     }
     
-    const eventData = { ...finalFormData, date, type: eventType, title, scorers, assists, playerIds: selectedPlayerIds, mainExercises };
+    const eventData: Omit<CalendarEvent, 'id'> = { ...finalFormData, date, type: eventType, title: title || 'Evento sin título', scorers, assists, playerIds: selectedPlayerIds, mainExercises };
     
     if (isEditMode && eventToEdit) {
       onUpdateEvent({ ...eventToEdit, ...eventData });
     } else {
-      onAddEvent(eventData as Omit<CalendarEvent, 'id'>);
+      onAddEvent(eventData);
     }
   };
   
