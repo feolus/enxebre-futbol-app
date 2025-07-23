@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import CoachDashboard from './components/CoachDashboard';
 import PlayerDashboard from './components/PlayerDashboard';
 import ClubDashboard from './components/ClubDashboard';
@@ -20,16 +20,82 @@ const convertFileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+// Type for the flat form data
+type PlayerFormData = Omit<Player, 'id' | 'photoUrl' | 'documents' | 'personalInfo' | 'medicalInfo' | 'contactInfo' | 'parentInfo' | 'jerseyNumber'> & {
+  age: string;
+  height: string;
+  weight: string;
+  email: string;
+  phone: string;
+  fatherNamePhone: string;
+  motherNamePhone: string;
+  parentEmail: string;
+  treatments: string;
+  jerseyNumber: string;
+};
+
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<View>('login');
   const [loggedInPlayer, setLoggedInPlayer] = useState<Player | null>(null);
   const [authError, setAuthError] = useState<string>('');
 
-  const [players, setPlayers] = useState<Player[]>(mockPlayers);
-  const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>(mockEvaluations);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(mockCalendarEvents);
+  const [players, setPlayers] = useState<Player[]>(() => {
+    try {
+      const storedPlayers = localStorage.getItem('players');
+      return storedPlayers ? JSON.parse(storedPlayers) : mockPlayers;
+    } catch (error) {
+      console.error("Failed to parse players from localStorage", error);
+      return mockPlayers;
+    }
+  });
+
+  const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>(() => {
+    try {
+      const storedEvals = localStorage.getItem('evaluations');
+      return storedEvals ? JSON.parse(storedEvals) : mockEvaluations;
+    } catch (error) {
+      console.error("Failed to parse evaluations from localStorage", error);
+      return mockEvaluations;
+    }
+  });
+  
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
+    try {
+      const storedEvents = localStorage.getItem('calendarEvents');
+      return storedEvents ? JSON.parse(storedEvents) : mockCalendarEvents;
+    } catch (error) {
+      console.error("Failed to parse calendarEvents from localStorage", error);
+      return mockCalendarEvents;
+    }
+  });
+  
   const [trainingSessions] = useState<TrainingSession[]>(mockTrainingSessions);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('players', JSON.stringify(players));
+    } catch (error) {
+      console.error("Failed to save players to localStorage", error);
+    }
+  }, [players]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('evaluations', JSON.stringify(evaluations));
+    } catch (error) {
+      console.error("Failed to save evaluations to localStorage", error);
+    }
+  }, [evaluations]);
+  
+  useEffect(() => {
+    try {
+      localStorage.setItem('calendarEvents', JSON.stringify(calendarEvents));
+    } catch (error) {
+      console.error("Failed to save calendarEvents to localStorage", error);
+    }
+  }, [calendarEvents]);
+
 
   const handleLogin = (role: 'coach' | 'club' | 'player', password?: string, playerId?: string) => {
     setAuthError('');
@@ -60,7 +126,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents' | 'personalInfo' | 'medicalInfo' | 'contactInfo' | 'parentInfo'> & { age: string, height: string, weight: string, email: string, phone: string, fatherNamePhone: string, motherNamePhone: string, parentEmail: string, treatments: string}, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: PlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
     const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
 
@@ -97,7 +163,7 @@ const App: React.FC = () => {
         lastName: newPlayerData.lastName,
         nickname: newPlayerData.nickname,
         idNumber: newPlayerData.idNumber,
-        jerseyNumber: newPlayerData.jerseyNumber,
+        jerseyNumber: parseInt(newPlayerData.jerseyNumber, 10) || 0,
         position: newPlayerData.position,
         previousClub: newPlayerData.previousClub,
         observations: newPlayerData.observations,
@@ -189,18 +255,19 @@ const App: React.FC = () => {
     setEvaluations(prev => [...prev, newEvaluation]);
   };
   
-  const handleAddEvent = (newEvent: Omit<CalendarEvent, 'id'>) => {
+  const handleAddEvent = useCallback((newEvent: Omit<CalendarEvent, 'id'>) => {
     const eventWithId: CalendarEvent = { ...newEvent, id: `ce-${Date.now()}` };
     setCalendarEvents(prev => [...prev, eventWithId]);
-  };
+  }, []);
 
-  const handleUpdateEvent = (updatedEvent: CalendarEvent) => {
+  const handleUpdateEvent = useCallback((updatedEvent: CalendarEvent) => {
     setCalendarEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-  };
+  }, []);
   
-  const handleDeleteEvent = (eventId: string) => {
+  const handleDeleteEvent = useCallback((eventId: string) => {
     setCalendarEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
-  };
+  }, []);
+
 
   const handleSwitchToRegister = () => {
       setCurrentView('register');

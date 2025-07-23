@@ -19,6 +19,9 @@ const toYYYYMMDD = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Type for the flat form data from PlayerRegistrationForm
+type FlatPlayerFormData = any;
+
 interface CoachDashboardProps {
   players: Player[];
   evaluations: PlayerEvaluation[];
@@ -101,7 +104,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleSavePlayerUpdate = (updatedPlayerData: FlatPlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
       if (!selectedPlayer) return;
       
       const fullPlayer: Player = {
@@ -157,13 +160,13 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
             case 'profile':
                 return (
                     <>
-                        <PlayerProfile 
-                          player={selectedPlayer!} 
+                        {selectedPlayer && <PlayerProfile 
+                          player={selectedPlayer} 
                           evaluations={props.evaluations.filter(e => e.playerId === selectedPlayer!.id)} 
                           onClose={handleCloseSubView} 
                           onOpenEvalModal={handleOpenEvalModal}
                           onMarkAsActive={handleMarkAsActive}
-                        />
+                        />}
                         {isEvalModalOpen && selectedPlayer && (
                            <AddEvaluationModal 
                                 player={selectedPlayer}
@@ -174,7 +177,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
                     </>
                 );
             case 'edit':
-                return <PlayerRegistrationForm playerToEdit={selectedPlayer!} onSave={handleSavePlayerUpdate} onClose={handleCloseSubView} />;
+                return <PlayerRegistrationForm playerToEdit={selectedPlayer} onSave={handleSavePlayerUpdate} onClose={handleCloseSubView} />;
             case 'list':
             default:
                 return <ClubView players={props.players} calendarEvents={props.calendarEvents} onSelectPlayer={handleSelectPlayer} onEditPlayer={handleEditPlayer} onDeletePlayer={handleDeleteClick}/>;
