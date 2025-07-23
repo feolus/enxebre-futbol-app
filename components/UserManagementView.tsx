@@ -47,7 +47,7 @@ const UserManagementView: React.FC<UserManagementViewProps> = ({ players, onUpda
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                        {players.map(player => (
+                        {players.map((player: Player) => (
                             <tr key={player.id}>
                                 <td className="p-4 flex items-center gap-3">
                                     <img src={player.photoUrl} alt={player.name} className="w-9 h-9 rounded-full" />

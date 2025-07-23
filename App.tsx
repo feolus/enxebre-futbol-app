@@ -60,7 +60,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: Omit<Player, 'id' | 'photoUrl' | 'documents' | 'personalInfo' | 'medicalInfo' | 'contactInfo' | 'parentInfo'> & { age: string, height: string, weight: string, email: string, phone: string, fatherNamePhone: string, motherNamePhone: string, parentEmail: string, treatments: string}, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
     const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
 

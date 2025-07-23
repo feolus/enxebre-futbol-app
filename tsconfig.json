@@ -14,20 +14,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noImplicitAny": false
+    "noFallthroughCasesInSwitch": true
   },
-  "include": [
-    ".",
-    "vite-env.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "vite.config.ts"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.node.json"
-    }
-  ]
+  "include": ["src", "components", "services", "data", "types.ts", "App.tsx", "index.tsx", "vite-env.d.ts"],
+  "exclude": ["node_modules", "vite.config.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

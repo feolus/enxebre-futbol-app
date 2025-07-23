@@ -16,11 +16,11 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ events, players }) => {
         const scorerCounts: { [key: string]: number } = {};
         const assistCounts: { [key: string]: number } = {};
 
-        events.filter(e => e.type === 'matchResult').forEach(event => {
-            event.scorers?.forEach(playerId => {
+        events.filter(e => e.type === 'matchResult').forEach((event: CalendarEvent) => {
+            event.scorers?.forEach((playerId: string) => {
                 scorerCounts[playerId] = (scorerCounts[playerId] || 0) + 1;
             });
-            event.assists?.forEach(playerId => {
+            event.assists?.forEach((playerId: string) => {
                 assistCounts[playerId] = (assistCounts[playerId] || 0) + 1;
             });
         });
@@ -115,7 +115,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ events, players }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700">
-                                {matchHistory.map(match => (
+                                {matchHistory.map((match: CalendarEvent) => (
                                     <tr key={match.id}>
                                         <td className="p-4 text-sm text-gray-300">{new Date(match.date + 'T00:00:00').toLocaleDateString('es-ES', {year: 'numeric', month: 'short', day: 'numeric'})}</td>
                                         <td className="p-4">

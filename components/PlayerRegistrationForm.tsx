@@ -3,6 +3,27 @@ import Card from './Card';
 import type { Player } from '../types';
 import { UsersIcon } from './Icons';
 
+type FormData = {
+    name: string;
+    lastName: string;
+    nickname: string;
+    idNumber: string;
+    phone: string;
+    email: string;
+    password?: string;
+    position: string;
+    jerseyNumber: string;
+    previousClub: string;
+    fatherNamePhone: string;
+    motherNamePhone: string;
+    parentEmail: string;
+    treatments: string;
+    observations: string;
+    age: string;
+    height: string;
+    weight: string;
+};
+
 interface FormProps {
   onClose: () => void;
   onSave: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => void;
@@ -15,7 +36,7 @@ const fileInputStyle = "w-full bg-gray-700 hover:bg-gray-600 text-white font-sem
 
 const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerToEdit }) => {
     const isEditMode = !!playerToEdit;
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         name: '',
         lastName: '',
         nickname: '',
