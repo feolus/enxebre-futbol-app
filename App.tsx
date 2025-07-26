@@ -85,9 +85,9 @@ const App: React.FC = () => {
   };
 
   const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
-    const success = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
-    if (success) {
-      setPlayers(prevPlayers => prevPlayers.map(p => p.id === updatedPlayer.id ? success : p));
+    const result = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
+    if (result) {
+      setPlayers(prevPlayers => prevPlayers.map(p => p.id === result.id ? result : p));
     }
   };
   
