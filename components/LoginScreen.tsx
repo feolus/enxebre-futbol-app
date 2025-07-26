@@ -16,15 +16,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
   const [password, setPassword] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(players[0]?.id || '');
 
-  const handlePlayerSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value;
-      if (value === 'register_new') {
-          onSwitchToRegister();
-      } else {
-          setSelectedPlayerId(value);
-      }
-  }
-
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (role === 'player') {
@@ -65,7 +56,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
                 <select
                   id="player"
                   value={selectedPlayerId}
-                  onChange={handlePlayerSelectChange}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedPlayerId(e.target.value)}
                   className={inputStyle}
                 >
                   {players.map(player => (
@@ -73,9 +64,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
                       {player.name}
                     </option>
                   ))}
-                  <option value="register_new" className="font-bold text-cyan-300">
-                    -- Registrar Nuevo Jugador --
-                  </option>
                 </select>
               </div>
                <div>
@@ -115,6 +103,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
             </button>
           </div>
         </form>
+
+        <p className="text-center text-sm text-gray-400 mt-6">
+            ¿Eres un nuevo jugador?{' '}
+            <button onClick={onSwitchToRegister} className="font-medium text-cyan-400 hover:text-cyan-300 underline">
+                Regístrate aquí
+            </button>
+        </p>
+
       </Card>
     </div>
   );

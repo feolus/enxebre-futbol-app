@@ -32,32 +32,37 @@ export const seedDatabase = async () => {
             const newPlayerId = playerMappings[evaluation.playerId];
             if (newPlayerId) {
                 const docRef = db.collection("evaluations").doc();
-                batch.set(docRef, { ...evaluation, playerId: newPlayerId });
+                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, ...evalData } = evaluation;
+                batch.set(docRef, { ...evalData, playerId: newPlayerId });
             }
         });
 
         mockCalendarEvents.forEach(event => {
             const docRef = db.collection("calendarEvents").doc();
             let updatedEvent = JSON.parse(JSON.stringify(event));
+             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id, ...eventData } = updatedEvent;
 
-            if (updatedEvent.playerId && playerMappings[updatedEvent.playerId]) {
-                updatedEvent.playerId = playerMappings[updatedEvent.playerId];
+
+            if (eventData.playerId && playerMappings[eventData.playerId]) {
+                eventData.playerId = playerMappings[eventData.playerId];
             }
-            if (updatedEvent.playerIds) {
-                updatedEvent.playerIds = updatedEvent.playerIds.map((pid: string) => playerMappings[pid] || pid);
+            if (eventData.playerIds) {
+                eventData.playerIds = eventData.playerIds.map((pid: string) => playerMappings[pid] || pid);
             }
-            if (updatedEvent.squad) {
-                updatedEvent.squad.calledUp = updatedEvent.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
-                updatedEvent.squad.notCalledUp = updatedEvent.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
+            if (eventData.squad) {
+                eventData.squad.calledUp = eventData.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
+                eventData.squad.notCalledUp = eventData.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
             }
-             if (updatedEvent.scorers) {
-                updatedEvent.scorers = updatedEvent.scorers.map((pid: string) => playerMappings[pid] || pid);
+             if (eventData.scorers) {
+                eventData.scorers = eventData.scorers.map((pid: string) => playerMappings[pid] || pid);
             }
-            if (updatedEvent.assists) {
-                updatedEvent.assists = updatedEvent.assists.map((pid: string) => playerMappings[pid] || pid);
+            if (eventData.assists) {
+                eventData.assists = eventData.assists.map((pid: string) => playerMappings[pid] || pid);
             }
 
-            batch.set(docRef, updatedEvent);
+            batch.set(docRef, eventData);
         });
 
         await batch.commit();

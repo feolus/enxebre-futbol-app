@@ -25,7 +25,8 @@
     "index.tsx",
     "types.ts",
     "data/mockData.ts",
-    "components/**/*.tsx"
+    "components/**/*.tsx",
+    "services/**/*.ts"
   ],
   "exclude": ["node_modules", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
