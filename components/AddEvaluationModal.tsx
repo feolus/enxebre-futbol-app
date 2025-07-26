@@ -5,7 +5,7 @@ import type { Player, PlayerEvaluation } from '../types';
 interface AddEvaluationModalProps {
   player: Player;
   onClose: () => void;
-  onSave: (evaluation: PlayerEvaluation) => void;
+  onSave: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
 }
 
 const toYYYYMMDD = (date: Date): string => {
@@ -32,7 +32,7 @@ const AddEvaluationModal: React.FC<AddEvaluationModalProps> = ({ player, onClose
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const newEvaluation: PlayerEvaluation = {
+    const newEvaluation: Omit<PlayerEvaluation, 'id'> = {
       playerId: player.id,
       date: formData.date,
       metrics: {

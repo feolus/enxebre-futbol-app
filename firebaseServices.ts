@@ -1,7 +1,7 @@
+
 import { db, storage } from './firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch } from "firebase/firestore";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
+import { mockPlayers, mockEvaluations, mockCalendarEvents } from './data/mockData';
 
 // Helper to convert file to base64
 const convertFileToBase64 = (file: File): Promise<string> => {
@@ -13,40 +13,102 @@ const convertFileToBase64 = (file: File): Promise<string> => {
     });
 };
 
-// Helper to upload a base64 string to Firebase Storage and get URL
-const uploadBase64 = async (base64: string, path: string): Promise<string> => {
-    const storageRef = ref(storage, path);
-    const snapshot = await uploadString(storageRef, base64, 'data_url');
-    return await getDownloadURL(snapshot.ref);
+// Helper to upload a file to Firebase Storage and get URL
+const uploadFile = async (file: File, path: string): Promise<string> => {
+    const storageRef = storage.ref(path);
+    const snapshot = await storageRef.put(file);
+    return await snapshot.ref.getDownloadURL();
 };
+
+// --- Seeding Service ---
+export const seedDatabase = async () => {
+    console.log("Checking if seeding is needed...");
+    const playersCol = db.collection("players");
+    const playerSnapshot = await playersCol.get();
+    if (playerSnapshot.empty) {
+        console.log("Database is empty. Seeding...");
+        const batch = db.batch();
+
+        // Add players and get their new Firestore IDs
+        const playerPromises = mockPlayers.map(async (player) => {
+            const { id, ...playerData } = player;
+            const docRef = db.collection("players").doc();
+            batch.set(docRef, playerData);
+            return { oldId: id, newId: docRef.id };
+        });
+        const playerMappings = await Promise.all(playerPromises);
+        const idMap = playerMappings.reduce((acc, curr) => {
+            acc[curr.oldId] = curr.newId;
+            return acc;
+        }, {} as Record<string, string>);
+
+        // Update evaluations with new player IDs
+        mockEvaluations.forEach(evaluation => {
+            const newPlayerId = idMap[evaluation.playerId];
+            if (newPlayerId) {
+                const docRef = db.collection("evaluations").doc();
+                batch.set(docRef, { ...evaluation, playerId: newPlayerId });
+            }
+        });
+
+        // Update calendar events with new player IDs
+        mockCalendarEvents.forEach(event => {
+            const docRef = db.collection("calendarEvents").doc();
+            const updatedEvent = { ...event };
+
+            if (updatedEvent.playerId && idMap[updatedEvent.playerId]) {
+                updatedEvent.playerId = idMap[updatedEvent.playerId];
+            }
+            if (updatedEvent.playerIds) {
+                updatedEvent.playerIds = updatedEvent.playerIds.map(pid => idMap[pid] || pid);
+            }
+            if (updatedEvent.squad) {
+                updatedEvent.squad.calledUp = updatedEvent.squad.calledUp.map(pid => idMap[pid] || pid);
+                updatedEvent.squad.notCalledUp = updatedEvent.squad.notCalledUp.map(pid => idMap[pid] || pid);
+            }
+             if (updatedEvent.scorers) {
+                updatedEvent.scorers = updatedEvent.scorers.map(pid => idMap[pid] || pid);
+            }
+            if (updatedEvent.assists) {
+                updatedEvent.assists = updatedEvent.assists.map(pid => idMap[pid] || pid);
+            }
+
+            batch.set(docRef, updatedEvent);
+        });
+
+        await batch.commit();
+        console.log("Database seeded successfully!");
+    } else {
+        console.log("Database already contains data. No seeding needed.");
+    }
+};
+
 
 // --- Player Services ---
 
 export const getPlayers = async (): Promise<Player[]> => {
-    const playersCol = collection(db, "players");
-    const playerSnapshot = await getDocs(playersCol);
+    const playersCol = db.collection("players");
+    const playerSnapshot = await playersCol.get();
     return playerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
 };
 
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
     try {
-        let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
+        const docRef = db.collection("players").doc();
+        const newPlayerId = docRef.id;
+
+        let photoUrl = `https://picsum.photos/seed/${newPlayerId}/200/200`;
         const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
-
-        const newPlayerId = `p${Date.now()}`;
-
+        
         if (idPhotoFile) {
-            const base64 = await convertFileToBase64(idPhotoFile);
-            photoUrl = await uploadBase64(base64, `players/${newPlayerId}/idPhoto.jpg`);
+            photoUrl = await uploadFile(idPhotoFile, `players/${newPlayerId}/idPhoto.jpg`);
             documents.idPhotoUrl = photoUrl;
         }
         if (dniFrontFile) {
-            const base64 = await convertFileToBase64(dniFrontFile);
-            documents.dniFrontUrl = await uploadBase64(base64, `players/${newPlayerId}/dniFront.jpg`);
+            documents.dniFrontUrl = await uploadFile(dniFrontFile, `players/${newPlayerId}/dniFront.jpg`);
         }
         if (dniBackFile) {
-            const base64 = await convertFileToBase64(dniBackFile);
-            documents.dniBackUrl = await uploadBase64(base64, `players/${newPlayerId}/dniBack.jpg`);
+            documents.dniBackUrl = await uploadFile(dniBackFile, `players/${newPlayerId}/dniBack.jpg`);
         }
 
         const playerToAdd: Omit<Player, 'id'> = {
@@ -82,8 +144,8 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        const docRef = await addDoc(collection(db, "players"), playerToAdd);
-        return { id: docRef.id, ...playerToAdd };
+        const newDocRef = await db.collection("players").add(playerToAdd);
+        return { id: newDocRef.id, ...playerToAdd };
     } catch (e) {
         console.error("Error adding player: ", e);
         return null;
@@ -92,30 +154,27 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
 
 export const updatePlayer = async (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
     try {
-        const playerRef = doc(db, "players", player.id);
+        const playerRef = db.collection("players").doc(player.id);
         
         let photoUrl = player.photoUrl;
         const documents = { ...(player.documents || {}) };
 
         if (idPhotoFile) {
-            const base64 = await convertFileToBase64(idPhotoFile);
-            photoUrl = await uploadBase64(base64, `players/${player.id}/idPhoto.jpg`);
+            photoUrl = await uploadFile(idPhotoFile, `players/${player.id}/idPhoto.jpg`);
             documents.idPhotoUrl = photoUrl;
         }
         if (dniFrontFile) {
-            const base64 = await convertFileToBase64(dniFrontFile);
-            documents.dniFrontUrl = await uploadBase64(base64, `players/${player.id}/dniFront.jpg`);
+            documents.dniFrontUrl = await uploadFile(dniFrontFile, `players/${player.id}/dniFront.jpg`);
         }
         if (dniBackFile) {
-            const base64 = await convertFileToBase64(dniBackFile);
-            documents.dniBackUrl = await uploadBase64(base64, `players/${player.id}/dniBack.jpg`);
+            documents.dniBackUrl = await uploadFile(dniBackFile, `players/${player.id}/dniBack.jpg`);
         }
         
         const updatedData = { ...player, photoUrl, documents };
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...dataToSave } = updatedData;
         
-        await updateDoc(playerRef, dataToSave);
+        await playerRef.update(dataToSave);
         return updatedData;
     } catch (e) {
         console.error("Error updating player: ", e);
@@ -125,8 +184,8 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
 
 export const updatePlayerPassword = async (playerId: string, newPassword: string):Promise<boolean> => {
     try {
-        const playerRef = doc(db, "players", playerId);
-        await updateDoc(playerRef, { password: newPassword });
+        const playerRef = db.collection("players").doc(playerId);
+        await playerRef.update({ password: newPassword });
         return true;
     } catch (e) {
         console.error("Error updating password: ", e);
@@ -136,12 +195,11 @@ export const updatePlayerPassword = async (playerId: string, newPassword: string
 
 export const deletePlayer = async (playerId: string): Promise<boolean> => {
     try {
-        await deleteDoc(doc(db, "players", playerId));
+        await db.collection("players").doc(playerId).delete();
         
-        // Bonus: Delete associated evaluations
-        const evalsQuery = query(collection(db, "evaluations"), where("playerId", "==", playerId));
-        const evalSnapshot = await getDocs(evalsQuery);
-        const batch = writeBatch(db);
+        const evalsQuery = db.collection("evaluations").where("playerId", "==", playerId);
+        const evalSnapshot = await evalsQuery.get();
+        const batch = db.batch();
         evalSnapshot.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
 
@@ -155,14 +213,14 @@ export const deletePlayer = async (playerId: string): Promise<boolean> => {
 // --- Evaluation Services ---
 
 export const getEvaluations = async (): Promise<PlayerEvaluation[]> => {
-    const evalsCol = collection(db, "evaluations");
-    const evalSnapshot = await getDocs(evalsCol);
+    const evalsCol = db.collection("evaluations");
+    const evalSnapshot = await evalsCol.get();
     return evalSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlayerEvaluation));
 };
 
 export const addEvaluation = async (evaluation: Omit<PlayerEvaluation, 'id'>): Promise<PlayerEvaluation | null> => {
     try {
-        const docRef = await addDoc(collection(db, "evaluations"), evaluation);
+        const docRef = await db.collection("evaluations").add(evaluation);
         return { id: docRef.id, ...evaluation };
     } catch (e) {
         console.error("Error adding evaluation: ", e);
@@ -173,14 +231,14 @@ export const addEvaluation = async (evaluation: Omit<PlayerEvaluation, 'id'>): P
 // --- Calendar Event Services ---
 
 export const getCalendarEvents = async (): Promise<CalendarEvent[]> => {
-    const eventsCol = collection(db, "calendarEvents");
-    const eventSnapshot = await getDocs(eventsCol);
+    const eventsCol = db.collection("calendarEvents");
+    const eventSnapshot = await eventsCol.get();
     return eventSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CalendarEvent));
 };
 
 export const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> => {
     try {
-        const docRef = await addDoc(collection(db, "calendarEvents"), event);
+        const docRef = await db.collection("calendarEvents").add(event);
         return { id: docRef.id, ...event };
     } catch (e) {
         console.error("Error adding calendar event: ", e);
@@ -190,10 +248,10 @@ export const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>): Promis
 
 export const updateCalendarEvent = async (event: CalendarEvent): Promise<boolean> => {
     try {
-        const eventRef = doc(db, "calendarEvents", event.id);
+        const eventRef = db.collection("calendarEvents").doc(event.id);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...dataToSave } = event;
-        await updateDoc(eventRef, dataToSave);
+        await eventRef.update(dataToSave);
         return true;
     } catch (e) {
         console.error("Error updating calendar event: ", e);
@@ -203,7 +261,7 @@ export const updateCalendarEvent = async (event: CalendarEvent): Promise<boolean
 
 export const deleteCalendarEvent = async (eventId: string): Promise<boolean> => {
     try {
-        await deleteDoc(doc(db, "calendarEvents", eventId));
+        await db.collection("calendarEvents").doc(eventId).delete();
         return true;
     } catch (e) {
         console.error("Error deleting calendar event: ", e);

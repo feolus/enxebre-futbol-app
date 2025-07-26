@@ -12,9 +12,6 @@ import * as firebaseServices from './firebaseServices';
 type UserRole = 'coach' | 'club' | 'player' | null;
 type View = 'login' | 'register' | 'dashboard';
 
-// Type for the flat form data from PlayerRegistrationForm
-type FlatPlayerFormData = any;
-
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<View>('login');
@@ -31,6 +28,8 @@ const App: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        await firebaseServices.seedDatabase(); // Check and seed if necessary
+        
         const [fetchedPlayers, fetchedEvals, fetchedEvents] = await Promise.all([
           firebaseServices.getPlayers(),
           firebaseServices.getEvaluations(),
@@ -77,7 +76,7 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: FlatPlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
     const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
     if (newPlayer) {
       setPlayers(prev => [...prev, newPlayer]);
@@ -146,7 +145,6 @@ const App: React.FC = () => {
       setCalendarEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
     }
   }, []);
-
 
   const handleSwitchToRegister = () => {
       setCurrentView('register');

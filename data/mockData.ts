@@ -1,3 +1,4 @@
+
 import type { Player, PlayerEvaluation, TrainingSession, Match, CalendarEvent } from '../types';
 
 const toYYYYMMDD = (date: Date): string => {
@@ -9,7 +10,6 @@ const toYYYYMMDD = (date: Date): string => {
 
 export const mockPlayers: Player[] = [
   {
-    id: 'p1',
     name: 'Álex López',
     lastName: 'López',
     nickname: 'El Mago',
@@ -26,12 +26,11 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 24, height: "185cm", weight: "80kg" },
-    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
     contactInfo: { email: 'alex.l@example.com', phone: '123-456-7890' },
     parentInfo: { fatherNamePhone: 'Juan López - 555-0101', motherNamePhone: 'Ana Pérez - 555-0102', parentEmail: 'padres.lopez@example.com' }
   },
   {
-    id: 'p2',
     name: 'Benito García',
     lastName: 'García',
     nickname: 'Ben',
@@ -48,12 +47,11 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 22, height: "178cm", weight: "75kg" },
-    medicalInfo: { status: 'Activo', notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
     contactInfo: { email: 'benito.g@example.com', phone: '123-456-7891' },
     parentInfo: { fatherNamePhone: 'Luis García - 555-0201', motherNamePhone: 'María Torres - 555-0202', parentEmail: 'padres.garcia@example.com' }
   },
   {
-    id: 'p3',
     name: 'Carla Díaz',
     lastName: 'Díaz',
     nickname: 'La Roca',
@@ -70,12 +68,11 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 26, height: "180cm", weight: "78kg" },
-    medicalInfo: { status: 'Lesionado', notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
+    medicalInfo: { status: 'Lesionado' as const, notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
     contactInfo: { email: 'carla.d@example.com', phone: '123-456-7892' },
     parentInfo: { fatherNamePhone: 'Pedro Díaz - 555-0301', motherNamePhone: 'Sara Ramos - 555-0302', parentEmail: 'padres.diaz@example.com' }
   },
   {
-    id: 'p4',
     name: 'David Egea',
     lastName: 'Egea',
     nickname: 'El Muro',
@@ -92,12 +89,11 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 28, height: "190cm", weight: "85kg" },
-    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
     contactInfo: { email: 'david.e@example.com', phone: '123-456-7893' },
     parentInfo: { fatherNamePhone: 'Jorge Egea - 555-0401', motherNamePhone: 'Laura Sanz - 555-0402', parentEmail: 'padres.egea@example.com' }
   },
   {
-    id: 'p5',
     name: 'Eva Gallardo',
     lastName: 'Gallardo',
     nickname: 'Speedy',
@@ -114,13 +110,13 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 23, height: "175cm", weight: "68kg" },
-    medicalInfo: { status: 'Activo', notes: 'En plena forma.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'En plena forma.' },
     contactInfo: { email: 'eva.g@example.com', phone: '123-456-7894' },
     parentInfo: { fatherNamePhone: 'Miguel Gallardo - 555-0501', motherNamePhone: 'Isabel Romero - 555-0502', parentEmail: 'padres.gallardo@example.com' }
   }
-];
+].map((p: any, i) => ({...p, id: `p${i+1}`}));
 
-export const mockEvaluations: PlayerEvaluation[] = [
+export const mockEvaluations: Omit<PlayerEvaluation, 'id'>[] = [
   // Progreso de Álex López
   { playerId: 'p1', date: '2024-05-01', metrics: { agility: 17.5, speed: 4.6, endurance: 4250, flexibility: 15 } },
   { playerId: 'p1', date: '2024-06-01', metrics: { agility: 17.2, speed: 4.5, endurance: 4400, flexibility: 16 } },
@@ -192,9 +188,8 @@ const getISODate = (dayOffset: number): string => {
     return toYYYYMMDD(date);
 };
 
-export const mockCalendarEvents: CalendarEvent[] = [
+export const mockCalendarEvents: Omit<CalendarEvent, 'id'>[] = [
     {
-        id: 'ce-past-match-1',
         date: getISODate(-12),
         type: 'matchResult',
         title: 'Resultado: vs Montaña FC',
@@ -204,7 +199,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         squad: { calledUp: ['p1', 'p2', 'p3', 'p4', 'p5'], notCalledUp: [] }
     },
     {
-        id: 'ce-past-match-2',
         date: getISODate(-5),
         type: 'matchResult',
         title: 'Resultado: vs Viejos Rivales',
@@ -219,7 +213,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         }
     },
     {
-        id: 'ce1',
         date: getISODate(-2),
         type: 'training',
         title: 'Entrenamiento Táctico',
@@ -227,7 +220,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         playerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
     },
     {
-        id: 'ce2',
         date: getISODate(-1),
         endDate: getISODate(10), // Injury for 12 days
         type: 'injury',
@@ -236,7 +228,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         reason: 'Distensión de isquiotibiales.'
     },
     {
-        id: 'ce3',
         date: getISODate(1),
         type: 'training',
         title: 'Resistencia y Agilidad',
@@ -244,7 +235,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         playerIds: ['p1', 'p2', 'p3', 'p4', 'p5'],
     },
     {
-        id: 'ce4',
         date: getISODate(2),
         type: 'personal',
         title: 'Ausencia: Benito García',
@@ -252,7 +242,6 @@ export const mockCalendarEvents: CalendarEvent[] = [
         reason: 'Asuntos personales'
     },
     {
-        id: 'ce5',
         date: mockMatches[0].date,
         type: 'match',
         title: `vs ${mockMatches[0].opponent}`,

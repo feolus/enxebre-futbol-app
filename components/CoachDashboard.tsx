@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, EvaluationMetric, Exercise } from '../types';
 import Card from './Card';
@@ -19,9 +20,6 @@ const toYYYYMMDD = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Type for the flat form data from PlayerRegistrationForm
-type FlatPlayerFormData = any;
-
 interface CoachDashboardProps {
   players: Player[];
   evaluations: PlayerEvaluation[];
@@ -31,7 +29,7 @@ interface CoachDashboardProps {
   onDeleteEvent: (eventId: string) => void;
   onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => void;
   onDeletePlayer: (playerId: string) => void;
-  onAddEvaluation: (evaluation: PlayerEvaluation) => void;
+  onAddEvaluation: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
   onUpdatePlayerPassword: (playerId: string, newPassword: string) => void;
 }
 
@@ -57,7 +55,6 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
       props.onUpdateEvent({ ...eventToUpdate, squad: updatedSquad });
     }
   };
-
 
   const handleSelectPlayer = (player: Player) => {
     setSelectedPlayer(player);
@@ -104,7 +101,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: FlatPlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleSavePlayerUpdate = (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
       if (!selectedPlayer) return;
       
       const fullPlayer: Player = {
@@ -149,7 +146,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
       }
   };
 
-  const handleSaveEvaluation = (evaluation: PlayerEvaluation) => {
+  const handleSaveEvaluation = (evaluation: Omit<PlayerEvaluation, 'id'>) => {
       props.onAddEvaluation(evaluation);
       setIsEvalModalOpen(false);
   };
@@ -490,7 +487,6 @@ const TrainingPlanner: React.FC<TrainingPlannerProps> = ({ events, players, onAd
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [eventToEdit, setEventToEdit] = useState<CalendarEvent | null>(null);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
-
 
   const startOfWeek = (date: Date) => {
     const d = new Date(date);
