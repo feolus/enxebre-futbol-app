@@ -28,7 +28,7 @@ const App: React.FC = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        await firebaseServices.seedDatabase(); // Check and seed if necessary
+        await firebaseServices.seedDatabase(); 
         
         const [fetchedPlayers, fetchedEvals, fetchedEvents] = await Promise.all([
           firebaseServices.getPlayers(),
@@ -105,7 +105,6 @@ const App: React.FC = () => {
     if (success) {
       setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== playerId));
       setEvaluations(prev => prev.filter(e => e.playerId !== playerId));
-      // This part might need adjustment if events are also in Firestore
       setCalendarEvents(prevEvents => 
           prevEvents.map(event => {
               if (event.playerIds) {
@@ -152,7 +151,7 @@ const App: React.FC = () => {
 
   const upcomingMatchEvent = useMemo(() => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize to start of day
+    today.setHours(0, 0, 0, 0);
     return calendarEvents
         .filter(e => e.type === 'match' && new Date(e.date) >= today)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())

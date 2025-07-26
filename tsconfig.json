@@ -17,7 +17,16 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true
   },
-  "include": ["src", "vite-env.d.ts", "firebaseConfig.ts", "firebaseServices.ts"],
+  "include": [
+    "vite-env.d.ts",
+    "firebaseConfig.ts",
+    "firebaseServices.ts",
+    "App.tsx",
+    "index.tsx",
+    "types.ts",
+    "data/mockData.ts",
+    "components/**/*.tsx"
+  ],
   "exclude": ["node_modules", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

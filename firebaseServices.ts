@@ -1,17 +1,6 @@
-
 import { db, storage } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 import { mockPlayers, mockEvaluations, mockCalendarEvents } from './data/mockData';
-
-// Helper to convert file to base64
-const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = error => reject(error);
-    });
-};
 
 // Helper to upload a file to Firebase Storage and get URL
 const uploadFile = async (file: File, path: string): Promise<string> => {
@@ -24,53 +13,48 @@ const uploadFile = async (file: File, path: string): Promise<string> => {
 export const seedDatabase = async () => {
     console.log("Checking if seeding is needed...");
     const playersCol = db.collection("players");
-    const playerSnapshot = await playersCol.get();
+    const playerSnapshot = await playersCol.limit(1).get();
     if (playerSnapshot.empty) {
         console.log("Database is empty. Seeding...");
         const batch = db.batch();
 
-        // Add players and get their new Firestore IDs
-        const playerPromises = mockPlayers.map(async (player) => {
-            const { id, ...playerData } = player;
-            const docRef = db.collection("players").doc();
-            batch.set(docRef, playerData);
-            return { oldId: id, newId: docRef.id };
-        });
-        const playerMappings = await Promise.all(playerPromises);
-        const idMap = playerMappings.reduce((acc, curr) => {
-            acc[curr.oldId] = curr.newId;
-            return acc;
-        }, {} as Record<string, string>);
+        const playerMappings: Record<string, string> = {};
 
-        // Update evaluations with new player IDs
+        mockPlayers.forEach(player => {
+            const docRef = db.collection("players").doc();
+            playerMappings[player.id] = docRef.id;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { id, ...playerData } = player;
+            batch.set(docRef, playerData);
+        });
+
         mockEvaluations.forEach(evaluation => {
-            const newPlayerId = idMap[evaluation.playerId];
+            const newPlayerId = playerMappings[evaluation.playerId];
             if (newPlayerId) {
                 const docRef = db.collection("evaluations").doc();
                 batch.set(docRef, { ...evaluation, playerId: newPlayerId });
             }
         });
 
-        // Update calendar events with new player IDs
         mockCalendarEvents.forEach(event => {
             const docRef = db.collection("calendarEvents").doc();
-            const updatedEvent = { ...event };
+            let updatedEvent = JSON.parse(JSON.stringify(event));
 
-            if (updatedEvent.playerId && idMap[updatedEvent.playerId]) {
-                updatedEvent.playerId = idMap[updatedEvent.playerId];
+            if (updatedEvent.playerId && playerMappings[updatedEvent.playerId]) {
+                updatedEvent.playerId = playerMappings[updatedEvent.playerId];
             }
             if (updatedEvent.playerIds) {
-                updatedEvent.playerIds = updatedEvent.playerIds.map(pid => idMap[pid] || pid);
+                updatedEvent.playerIds = updatedEvent.playerIds.map((pid: string) => playerMappings[pid] || pid);
             }
             if (updatedEvent.squad) {
-                updatedEvent.squad.calledUp = updatedEvent.squad.calledUp.map(pid => idMap[pid] || pid);
-                updatedEvent.squad.notCalledUp = updatedEvent.squad.notCalledUp.map(pid => idMap[pid] || pid);
+                updatedEvent.squad.calledUp = updatedEvent.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
+                updatedEvent.squad.notCalledUp = updatedEvent.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
             }
              if (updatedEvent.scorers) {
-                updatedEvent.scorers = updatedEvent.scorers.map(pid => idMap[pid] || pid);
+                updatedEvent.scorers = updatedEvent.scorers.map((pid: string) => playerMappings[pid] || pid);
             }
             if (updatedEvent.assists) {
-                updatedEvent.assists = updatedEvent.assists.map(pid => idMap[pid] || pid);
+                updatedEvent.assists = updatedEvent.assists.map((pid: string) => playerMappings[pid] || pid);
             }
 
             batch.set(docRef, updatedEvent);
@@ -144,8 +128,8 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        const newDocRef = await db.collection("players").add(playerToAdd);
-        return { id: newDocRef.id, ...playerToAdd };
+        await docRef.set(playerToAdd);
+        return { id: newPlayerId, ...playerToAdd };
     } catch (e) {
         console.error("Error adding player: ", e);
         return null;
