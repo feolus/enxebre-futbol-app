@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Player, CalendarEvent, Exercise, TrainingSession } from '../types';
-import { mockEvaluations } from '../data/mockData';
+import type { Player, CalendarEvent, Exercise, TrainingSession, PlayerEvaluation } from '../types';
 import Card from './Card';
 import PerformanceChart from './PerformanceChart';
 import { CalendarIcon, TrophyIcon, ClockIcon, MapPinIcon, BarChartSquareIcon, ActivityIcon } from './Icons';
@@ -9,6 +8,7 @@ import StatisticsView from './StatisticsView';
 interface PlayerDashboardProps {
   player: Player;
   allPlayers: Player[];
+  evaluations: PlayerEvaluation[];
   matchEvent?: CalendarEvent;
   calendarEvents: CalendarEvent[];
   trainingSessions: TrainingSession[];
@@ -146,10 +146,8 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
     );
 }
 
-const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, matchEvent, calendarEvents, trainingSessions }) => {
+const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, evaluations, matchEvent, calendarEvents, trainingSessions }) => {
   const [activeTab, setActiveTab] = useState<'session' | 'performance' | 'match' | 'statistics'>('session');
-  
-  const playerEvaluations = mockEvaluations.filter(e => e.playerId === player.id);
   
   const nextTrainingEvent = useMemo(() => {
     const today = new Date();
@@ -231,7 +229,7 @@ const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, m
           </div>
         );
       case 'performance':
-        return <PerformanceChart evaluations={playerEvaluations} title="Mi Tendencia de Rendimiento" />;
+        return <PerformanceChart evaluations={evaluations} title="Mi Tendencia de Rendimiento" />;
       case 'match':
         return matchEvent && matchDate ? (
             <div className="bg-gray-800 rounded-lg overflow-hidden h-full">

@@ -46,6 +46,7 @@ export interface EvaluationMetric {
 }
 
 export interface PlayerEvaluation {
+  id: string;
   playerId: string;
   date: string; // ISO 8601 format: "YYYY-MM-DD"
   metrics: EvaluationMetric;

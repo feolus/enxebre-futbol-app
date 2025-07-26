@@ -4,98 +4,49 @@ import PlayerDashboard from './components/PlayerDashboard';
 import ClubDashboard from './components/ClubDashboard';
 import LoginScreen from './components/LoginScreen';
 import PlayerRegistrationForm from './components/PlayerRegistrationForm';
-import { mockPlayers, mockEvaluations, mockCalendarEvents, mockTrainingSessions } from './data/mockData';
+import { mockTrainingSessions } from './data/mockData';
 import type { Player, PlayerEvaluation, CalendarEvent, TrainingSession } from './types';
 import { LogoIcon, LogoutIcon } from './components/Icons';
+import * as firebaseServices from './firebaseServices';
 
 type UserRole = 'coach' | 'club' | 'player' | null;
 type View = 'login' | 'register' | 'dashboard';
 
-const convertFileToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
-  });
-};
-
-// Type for the flat form data
-type PlayerFormData = Omit<Player, 'id' | 'photoUrl' | 'documents' | 'personalInfo' | 'medicalInfo' | 'contactInfo' | 'parentInfo' | 'jerseyNumber'> & {
-  age: string;
-  height: string;
-  weight: string;
-  email: string;
-  phone: string;
-  fatherNamePhone: string;
-  motherNamePhone: string;
-  parentEmail: string;
-  treatments: string;
-  jerseyNumber: string;
-};
+// Type for the flat form data from PlayerRegistrationForm
+type FlatPlayerFormData = any;
 
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [currentView, setCurrentView] = useState<View>('login');
   const [loggedInPlayer, setLoggedInPlayer] = useState<Player | null>(null);
   const [authError, setAuthError] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const [players, setPlayers] = useState<Player[]>(() => {
-    try {
-      const storedPlayers = localStorage.getItem('players');
-      return storedPlayers ? JSON.parse(storedPlayers) : mockPlayers;
-    } catch (error) {
-      console.error("Failed to parse players from localStorage", error);
-      return mockPlayers;
-    }
-  });
-
-  const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>(() => {
-    try {
-      const storedEvals = localStorage.getItem('evaluations');
-      return storedEvals ? JSON.parse(storedEvals) : mockEvaluations;
-    } catch (error) {
-      console.error("Failed to parse evaluations from localStorage", error);
-      return mockEvaluations;
-    }
-  });
-  
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => {
-    try {
-      const storedEvents = localStorage.getItem('calendarEvents');
-      return storedEvents ? JSON.parse(storedEvents) : mockCalendarEvents;
-    } catch (error) {
-      console.error("Failed to parse calendarEvents from localStorage", error);
-      return mockCalendarEvents;
-    }
-  });
-  
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [trainingSessions] = useState<TrainingSession[]>(mockTrainingSessions);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('players', JSON.stringify(players));
-    } catch (error) {
-      console.error("Failed to save players to localStorage", error);
-    }
-  }, [players]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('evaluations', JSON.stringify(evaluations));
-    } catch (error) {
-      console.error("Failed to save evaluations to localStorage", error);
-    }
-  }, [evaluations]);
-  
-  useEffect(() => {
-    try {
-      localStorage.setItem('calendarEvents', JSON.stringify(calendarEvents));
-    } catch (error) {
-      console.error("Failed to save calendarEvents to localStorage", error);
-    }
-  }, [calendarEvents]);
-
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [fetchedPlayers, fetchedEvals, fetchedEvents] = await Promise.all([
+          firebaseServices.getPlayers(),
+          firebaseServices.getEvaluations(),
+          firebaseServices.getCalendarEvents()
+        ]);
+        setPlayers(fetchedPlayers);
+        setEvaluations(fetchedEvals);
+        setCalendarEvents(fetchedEvents);
+      } catch (error) {
+        console.error("Error fetching data from Firebase:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleLogin = (role: 'coach' | 'club' | 'player', password?: string, playerId?: string) => {
     setAuthError('');
@@ -126,146 +77,74 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: PlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
-    let photoUrl = `https://picsum.photos/seed/p${Date.now()}/200/200`;
-    const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
-
-    if (idPhotoFile) {
-        try {
-            photoUrl = await convertFileToBase64(idPhotoFile);
-            documents.idPhotoUrl = photoUrl;
-        } catch (error) {
-            console.error("Error converting photo file to Base64", error);
-        }
+  const handleAddPlayer = async (newPlayerData: FlatPlayerFormData, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+    const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
+    if (newPlayer) {
+      setPlayers(prev => [...prev, newPlayer]);
     }
-
-    if (dniFrontFile) {
-        try {
-            documents.dniFrontUrl = await convertFileToBase64(dniFrontFile);
-        } catch (error) {
-            console.error("Error converting DNI front file to Base64", error);
-        }
-    }
-
-    if (dniBackFile) {
-        try {
-            documents.dniBackUrl = await convertFileToBase64(dniBackFile);
-        } catch (error) {
-            console.error("Error converting DNI back file to Base64", error);
-        }
-    }
-
-    const playerToAdd: Player = {
-        id: `p${Date.now()}`,
-        photoUrl: photoUrl,
-        documents: documents,
-        name: `${newPlayerData.name} ${newPlayerData.lastName}`,
-        lastName: newPlayerData.lastName,
-        nickname: newPlayerData.nickname,
-        idNumber: newPlayerData.idNumber,
-        jerseyNumber: parseInt(newPlayerData.jerseyNumber, 10) || 0,
-        position: newPlayerData.position,
-        previousClub: newPlayerData.previousClub,
-        observations: newPlayerData.observations,
-        password: newPlayerData.password,
-        personalInfo: {
-            age: parseInt(newPlayerData.age, 10) || 0,
-            height: newPlayerData.height,
-            weight: newPlayerData.weight,
-        },
-        medicalInfo: {
-            status: 'Activo',
-            notes: '',
-            treatments: newPlayerData.treatments,
-        },
-        contactInfo: {
-            email: newPlayerData.email,
-            phone: newPlayerData.phone,
-        },
-        parentInfo: {
-            fatherNamePhone: newPlayerData.fatherNamePhone,
-            motherNamePhone: newPlayerData.motherNamePhone,
-            parentEmail: newPlayerData.parentEmail,
-        },
-    };
-    setPlayers(prev => [...prev, playerToAdd]);
     setCurrentView('login');
   };
 
   const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
-    let playerToUpdate = { ...updatedPlayer };
-    let documents = { ...(playerToUpdate.documents || {}) };
-
-    if (idPhotoFile) {
-        try {
-            playerToUpdate.photoUrl = await convertFileToBase64(idPhotoFile);
-            documents.idPhotoUrl = playerToUpdate.photoUrl;
-        } catch (error) {
-            console.error("Error converting file to Base64", error);
-        }
+    const success = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
+    if (success) {
+      setPlayers(prevPlayers => prevPlayers.map(p => p.id === updatedPlayer.id ? success : p));
     }
-
-    if (dniFrontFile) {
-        try {
-            documents.dniFrontUrl = await convertFileToBase64(dniFrontFile);
-        } catch (error) {
-            console.error("Error converting DNI front file to Base64", error);
-        }
-    }
-
-    if (dniBackFile) {
-        try {
-            documents.dniBackUrl = await convertFileToBase64(dniBackFile);
-        } catch (error) {
-            console.error("Error converting DNI back file to Base64", error);
-        }
-    }
-    
-    playerToUpdate.documents = documents;
-
-    setPlayers(prevPlayers => prevPlayers.map(p => p.id === playerToUpdate.id ? playerToUpdate : p));
   };
   
-  const handleUpdatePlayerPassword = (playerId: string, newPassword: string) => {
-    setPlayers(prevPlayers => prevPlayers.map(p => 
-        p.id === playerId ? { ...p, password: newPassword } : p
-    ));
+  const handleUpdatePlayerPassword = async (playerId: string, newPassword: string) => {
+    const success = await firebaseServices.updatePlayerPassword(playerId, newPassword);
+    if (success) {
+      setPlayers(prevPlayers => prevPlayers.map(p => 
+          p.id === playerId ? { ...p, password: newPassword } : p
+      ));
+    }
   };
 
-  const handleDeletePlayer = (playerId: string) => {
-    setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== playerId));
-    setEvaluations(prev => prev.filter(e => e.playerId !== playerId));
-    
-    setCalendarEvents(prevEvents => 
-        prevEvents.map(event => {
-            if (event.playerIds) {
-                const newPlayerIds = event.playerIds.filter(id => id !== playerId);
-                return { ...event, playerIds: newPlayerIds };
-            }
-            return event;
-        }).filter(event => {
-            if (event.playerId === playerId) return false;
-            if (event.playerIds && event.playerIds.length === 0) return false;
-            return true;
-        })
-    );
+  const handleDeletePlayer = async (playerId: string) => {
+    const success = await firebaseServices.deletePlayer(playerId);
+    if (success) {
+      setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== playerId));
+      setEvaluations(prev => prev.filter(e => e.playerId !== playerId));
+      // This part might need adjustment if events are also in Firestore
+      setCalendarEvents(prevEvents => 
+          prevEvents.map(event => {
+              if (event.playerIds) {
+                  const newPlayerIds = event.playerIds.filter(id => id !== playerId);
+                  return { ...event, playerIds: newPlayerIds };
+              }
+              return event;
+          }).filter(event => event.playerId !== playerId)
+      );
+    }
   };
   
-  const handleAddEvaluation = (newEvaluation: PlayerEvaluation) => {
-    setEvaluations(prev => [...prev, newEvaluation]);
+  const handleAddEvaluation = async (newEvaluation: Omit<PlayerEvaluation, 'id'>) => {
+    const addedEval = await firebaseServices.addEvaluation(newEvaluation);
+    if (addedEval) {
+      setEvaluations(prev => [...prev, addedEval]);
+    }
   };
   
-  const handleAddEvent = useCallback((newEvent: Omit<CalendarEvent, 'id'>) => {
-    const eventWithId: CalendarEvent = { ...newEvent, id: `ce-${Date.now()}` };
-    setCalendarEvents(prev => [...prev, eventWithId]);
+  const handleAddEvent = useCallback(async (newEvent: Omit<CalendarEvent, 'id'>) => {
+    const addedEvent = await firebaseServices.addCalendarEvent(newEvent);
+    if (addedEvent) {
+      setCalendarEvents(prev => [...prev, addedEvent]);
+    }
   }, []);
 
-  const handleUpdateEvent = useCallback((updatedEvent: CalendarEvent) => {
-    setCalendarEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+  const handleUpdateEvent = useCallback(async (updatedEvent: CalendarEvent) => {
+    const success = await firebaseServices.updateCalendarEvent(updatedEvent);
+    if (success) {
+      setCalendarEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    }
   }, []);
   
-  const handleDeleteEvent = useCallback((eventId: string) => {
-    setCalendarEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
+  const handleDeleteEvent = useCallback(async (eventId: string) => {
+    const success = await firebaseServices.deleteCalendarEvent(eventId);
+    if (success) {
+      setCalendarEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
+    }
   }, []);
 
 
@@ -283,6 +162,10 @@ const App: React.FC = () => {
   }, [calendarEvents]);
 
   const renderContent = () => {
+    if (isLoading) {
+      return <div className="text-center p-10">Cargando datos...</div>;
+    }
+
     if (currentView === 'register') {
       return <PlayerRegistrationForm onSave={handleAddPlayer} onClose={() => setCurrentView('login')} />;
     }
@@ -312,6 +195,7 @@ const App: React.FC = () => {
         return <PlayerDashboard 
                   player={loggedInPlayer} 
                   allPlayers={players}
+                  evaluations={evaluations.filter(e => e.playerId === loggedInPlayer.id)}
                   matchEvent={upcomingMatchEvent}
                   calendarEvents={calendarEvents}
                   trainingSessions={trainingSessions}
