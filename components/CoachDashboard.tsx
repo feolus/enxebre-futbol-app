@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, EvaluationMetric, Exercise } from '../types';
 import Card from './Card';

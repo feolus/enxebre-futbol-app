@@ -76,12 +76,14 @@ const App: React.FC = () => {
     setCurrentView('login');
   };
 
-  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
     const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
     if (newPlayer) {
       setPlayers(prev => [...prev, newPlayer]);
+      setCurrentView('login');
+      return true;
     }
-    setCurrentView('login');
+    return false;
   };
 
   const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {

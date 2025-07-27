@@ -11,7 +11,6 @@ const uploadFile = async (file: File, path: string): Promise<string> => {
 
 // --- Seeding Service ---
 export const seedDatabase = async () => {
-    console.log("Checking if seeding is needed...");
     const playersCol = db.collection("players");
     const playerSnapshot = await playersCol.limit(1).get();
     if (playerSnapshot.empty) {
@@ -23,7 +22,6 @@ export const seedDatabase = async () => {
         mockPlayers.forEach(player => {
             const docRef = db.collection("players").doc();
             playerMappings[player.id] = docRef.id;
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const { id, ...playerData } = player;
             batch.set(docRef, playerData);
         });
@@ -32,17 +30,13 @@ export const seedDatabase = async () => {
             const newPlayerId = playerMappings[evaluation.playerId];
             if (newPlayerId) {
                 const docRef = db.collection("evaluations").doc();
-                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const { id, ...evalData } = evaluation;
-                batch.set(docRef, { ...evalData, playerId: newPlayerId });
+                batch.set(docRef, { ...evaluation, playerId: newPlayerId });
             }
         });
 
         mockCalendarEvents.forEach(event => {
             const docRef = db.collection("calendarEvents").doc();
-            let updatedEvent = JSON.parse(JSON.stringify(event));
-             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            const { id, ...eventData } = updatedEvent;
+            const eventData = JSON.parse(JSON.stringify(event));
 
 
             if (eventData.playerId && playerMappings[eventData.playerId]) {
@@ -67,8 +61,6 @@ export const seedDatabase = async () => {
 
         await batch.commit();
         console.log("Database seeded successfully!");
-    } else {
-        console.log("Database already contains data. No seeding needed.");
     }
 };
 
@@ -160,7 +152,6 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
         }
         
         const updatedData = { ...player, photoUrl, documents };
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...dataToSave } = updatedData;
         
         await playerRef.update(dataToSave);
@@ -238,7 +229,6 @@ export const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>): Promis
 export const updateCalendarEvent = async (event: CalendarEvent): Promise<boolean> => {
     try {
         const eventRef = db.collection("calendarEvents").doc(event.id);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { id, ...dataToSave } = event;
         await eventRef.update(dataToSave);
         return true;

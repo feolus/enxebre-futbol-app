@@ -5,16 +5,12 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-
-    /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -23,15 +19,11 @@
   },
   "include": [
     "vite-env.d.ts",
-    "firebaseConfig.ts",
-    "firebaseServices.ts",
-    "App.tsx",
-    "index.tsx",
-    "types.ts",
-    "data/mockData.ts",
+    "*.ts",
+    "*.tsx",
     "components/**/*.tsx",
+    "data/**/*.ts",
     "services/**/*.ts"
   ],
-  "exclude": ["node_modules", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
