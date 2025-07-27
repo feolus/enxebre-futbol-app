@@ -26,7 +26,7 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 24, height: "185cm", weight: "80kg" },
-    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' }
+    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
     contactInfo: { email: 'alex.l@example.com', phone: '123-456-7890' },
     parentInfo: { fatherNamePhone: 'Juan López - 555-0101', motherNamePhone: 'Ana Pérez - 555-0102', parentEmail: 'padres.lopez@example.com' },
   },
