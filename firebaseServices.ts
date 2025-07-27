@@ -36,7 +36,6 @@ export const seedDatabase = async () => {
 
         mockCalendarEvents.forEach(event => {
             const docRef = db.collection("calendarEvents").doc();
-            // Deep copy to avoid mutating the original mock data
             const eventData = JSON.parse(JSON.stringify(event));
             
             if (eventData.playerId && playerMappings[eventData.playerId]) {
@@ -46,8 +45,12 @@ export const seedDatabase = async () => {
                 eventData.playerIds = eventData.playerIds.map((pid: string) => playerMappings[pid] || pid);
             }
             if (eventData.squad) {
-                eventData.squad.calledUp = eventData.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
-                eventData.squad.notCalledUp = eventData.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
+                if (eventData.squad.calledUp) {
+                    eventData.squad.calledUp = eventData.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
+                }
+                if (eventData.squad.notCalledUp) {
+                    eventData.squad.notCalledUp = eventData.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
+                }
             }
              if (eventData.scorers) {
                 eventData.scorers = eventData.scorers.map((pid: string) => playerMappings[pid] || pid);

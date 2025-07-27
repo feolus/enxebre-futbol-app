@@ -26,7 +26,7 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 24, height: "185cm", weight: "80kg" },
-    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' }
     contactInfo: { email: 'alex.l@example.com', phone: '123-456-7890' },
     parentInfo: { fatherNamePhone: 'Juan López - 555-0101', motherNamePhone: 'Ana Pérez - 555-0102', parentEmail: 'padres.lopez@example.com' },
   },
@@ -48,7 +48,7 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 22, height: "178cm", weight: "75kg" },
-    medicalInfo: { status: 'Activo' as const, notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
+    medicalInfo: { status: 'Activo', notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
     contactInfo: { email: 'benito.g@example.com', phone: '123-456-7891' },
     parentInfo: { fatherNamePhone: 'Luis García - 555-0201', motherNamePhone: 'María Torres - 555-0202', parentEmail: 'padres.garcia@example.com' },
   },
@@ -70,7 +70,7 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 26, height: "180cm", weight: "78kg" },
-    medicalInfo: { status: 'Lesionado' as const, notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
+    medicalInfo: { status: 'Lesionado', notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
     contactInfo: { email: 'carla.d@example.com', phone: '123-456-7892' },
     parentInfo: { fatherNamePhone: 'Pedro Díaz - 555-0301', motherNamePhone: 'Sara Ramos - 555-0302', parentEmail: 'padres.diaz@example.com' },
   },
@@ -92,7 +92,7 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 28, height: "190cm", weight: "85kg" },
-    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
     contactInfo: { email: 'david.e@example.com', phone: '123-456-7893' },
     parentInfo: { fatherNamePhone: 'Jorge Egea - 555-0401', motherNamePhone: 'Laura Sanz - 555-0402', parentEmail: 'padres.egea@example.com' },
   },
@@ -114,29 +114,29 @@ export const mockPlayers: Player[] = [
         idPhotoUrl: '#'
     },
     personalInfo: { age: 23, height: "175cm", weight: "68kg" },
-    medicalInfo: { status: 'Activo' as const, notes: 'En plena forma.' },
+    medicalInfo: { status: 'Activo', notes: 'En plena forma.' },
     contactInfo: { email: 'eva.g@example.com', phone: '123-456-7894' },
     parentInfo: { fatherNamePhone: 'Miguel Gallardo - 555-0501', motherNamePhone: 'Isabel Romero - 555-0502', parentEmail: 'padres.gallardo@example.com' },
   }
 ];
 
 
-export const mockEvaluations: Omit<PlayerEvaluation, 'id'>[] = [
-  { playerId: 'p1', date: '2024-05-01', metrics: { agility: 17.5, speed: 4.6, endurance: 4250, flexibility: 15 } },
-  { playerId: 'p1', date: '2024-06-01', metrics: { agility: 17.2, speed: 4.5, endurance: 4400, flexibility: 16 } },
-  { playerId: 'p1', date: '2024-07-01', metrics: { agility: 17.0, speed: 4.45, endurance: 4500, flexibility: 16 } },
-  { playerId: 'p2', date: '2024-05-01', metrics: { agility: 18.2, speed: 4.7, endurance: 4600, flexibility: 20 } },
-  { playerId: 'p2', date: '2024-06-01', metrics: { agility: 18.0, speed: 4.65, endurance: 4650, flexibility: 21 } },
-  { playerId: 'p2', date: '2024-07-01', metrics: { agility: 17.8, speed: 4.6, endurance: 4750, flexibility: 22 } },
-  { playerId: 'p3', date: '2024-05-01', metrics: { agility: 19.0, speed: 5.0, endurance: 4000, flexibility: 14 } },
-  { playerId: 'p3', date: '2024-06-01', metrics: { agility: 18.8, speed: 4.9, endurance: 4100, flexibility: 14 } },
-  { playerId: 'p3', date: '2024-07-01', metrics: { agility: 19.5, speed: 5.1, endurance: 3900, flexibility: 12 } },
-  { playerId: 'p4', date: '2024-05-01', metrics: { agility: 20.5, speed: 5.5, endurance: 3750, flexibility: 10 } },
-  { playerId: 'p4', date: '2024-06-01', metrics: { agility: 20.1, speed: 5.4, endurance: 3800, flexibility: 11 } },
-  { playerId: 'p4', date: '2024-07-01', metrics: { agility: 19.8, speed: 5.35, endurance: 3900, flexibility: 12 } },
-  { playerId: 'p5', date: '2024-05-01', metrics: { agility: 16.5, speed: 4.5, endurance: 4700, flexibility: 25 } },
-  { playerId: 'p5', date: '2024-06-01', metrics: { agility: 16.2, speed: 4.45, endurance: 4750, flexibility: 25 } },
-  { playerId: 'p5', date: '2024-07-01', metrics: { agility: 16.0, speed: 4.4, endurance: 4800, flexibility: 26 } },
+export const mockEvaluations: PlayerEvaluation[] = [
+  { id: 'e1', playerId: 'p1', date: '2024-05-01', metrics: { agility: 17.5, speed: 4.6, endurance: 4250, flexibility: 15 } },
+  { id: 'e2', playerId: 'p1', date: '2024-06-01', metrics: { agility: 17.2, speed: 4.5, endurance: 4400, flexibility: 16 } },
+  { id: 'e3', playerId: 'p1', date: '2024-07-01', metrics: { agility: 17.0, speed: 4.45, endurance: 4500, flexibility: 16 } },
+  { id: 'e4', playerId: 'p2', date: '2024-05-01', metrics: { agility: 18.2, speed: 4.7, endurance: 4600, flexibility: 20 } },
+  { id: 'e5', playerId: 'p2', date: '2024-06-01', metrics: { agility: 18.0, speed: 4.65, endurance: 4650, flexibility: 21 } },
+  { id: 'e6', playerId: 'p2', date: '2024-07-01', metrics: { agility: 17.8, speed: 4.6, endurance: 4750, flexibility: 22 } },
+  { id: 'e7', playerId: 'p3', date: '2024-05-01', metrics: { agility: 19.0, speed: 5.0, endurance: 4000, flexibility: 14 } },
+  { id: 'e8', playerId: 'p3', date: '2024-06-01', metrics: { agility: 18.8, speed: 4.9, endurance: 4100, flexibility: 14 } },
+  { id: 'e9', playerId: 'p3', date: '2024-07-01', metrics: { agility: 19.5, speed: 5.1, endurance: 3900, flexibility: 12 } },
+  { id: 'e10', playerId: 'p4', date: '2024-05-01', metrics: { agility: 20.5, speed: 5.5, endurance: 3750, flexibility: 10 } },
+  { id: 'e11', playerId: 'p4', date: '2024-06-01', metrics: { agility: 20.1, speed: 5.4, endurance: 3800, flexibility: 11 } },
+  { id: 'e12', playerId: 'p4', date: '2024-07-01', metrics: { agility: 19.8, speed: 5.35, endurance: 3900, flexibility: 12 } },
+  { id: 'e13', playerId: 'p5', date: '2024-05-01', metrics: { agility: 16.5, speed: 4.5, endurance: 4700, flexibility: 25 } },
+  { id: 'e14', playerId: 'p5', date: '2024-06-01', metrics: { agility: 16.2, speed: 4.45, endurance: 4750, flexibility: 25 } },
+  { id: 'e15', playerId: 'p5', date: '2024-07-01', metrics: { agility: 16.0, speed: 4.4, endurance: 4800, flexibility: 26 } },
 ];
 
 export const mockTrainingSessions: TrainingSession[] = [

@@ -4,10 +4,10 @@ import PlayerDashboard from './components/PlayerDashboard';
 import ClubDashboard from './components/ClubDashboard';
 import LoginScreen from './components/LoginScreen';
 import PlayerRegistrationForm from './components/PlayerRegistrationForm';
-import { mockTrainingSessions } from './data/mockData';
 import type { Player, PlayerEvaluation, CalendarEvent, TrainingSession } from './types';
 import { LogoIcon, LogoutIcon } from './components/Icons';
 import * as firebaseServices from './firebaseServices';
+import { mockTrainingSessions } from './data/mockData';
 
 type UserRole = 'coach' | 'club' | 'player' | null;
 type View = 'login' | 'register' | 'dashboard';
