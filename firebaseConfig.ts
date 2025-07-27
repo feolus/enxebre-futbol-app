@@ -2,6 +2,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/firestore';
 import 'firebase/compat/storage';
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBXyA6rETj67LRQ9NgQwTUPLKryZ3HlJQY",
   authDomain: "enxebre-futbol.firebaseapp.com",
@@ -12,6 +13,7 @@ const firebaseConfig = {
   measurementId: "G-ZH31PM9VXS"
 };
 
+// Initialize Firebase
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }

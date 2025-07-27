@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent, FormEvent } from 'react';
-import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, EvaluationMetric, Exercise } from '../types';
+import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, Exercise } from '../types';
 import Card from './Card';
 import PerformanceChart from './PerformanceChart';
 import PlayerRegistrationForm from './PlayerRegistrationForm';
@@ -19,6 +19,248 @@ const toYYYYMMDD = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+interface ComparisonViewProps {
+  players: Player[];
+  evaluations: PlayerEvaluation[];
+}
+
+const ComparisonView: React.FC<ComparisonViewProps> = ({ players, evaluations }) => {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleTogglePlayer = (playerId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(playerId)
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    );
+  };
+
+  const maxMetrics = {
+    agility: { min: 15, max: 25 }, // Lower is better
+    speed: { min: 4, max: 6 }, // Lower is better
+    endurance: 5000,
+    flexibility: 40,
+  };
+  
+  const latestEvaluations = useMemo(() => {
+    const latest: { [playerId: string]: PlayerEvaluation } = {};
+    evaluations.forEach(e => {
+      if (!latest[e.playerId] || new Date(e.date) > new Date(latest[e.playerId].date)) {
+        latest[e.playerId] = e;
+      }
+    });
+    return latest;
+  }, [evaluations]);
+
+  const chartData = useMemo(() => {
+    const data: any[] = [
+      { subject: 'Agilidad', A: 0, B: 0, fullMark: 100 },
+      { subject: 'Velocidad', A: 0, B: 0, fullMark: 100 },
+      { subject: 'Resistencia', A: 0, B: 0, fullMark: 100 },
+      { subject: 'Flexibilidad', A: 0, B: 0, fullMark: 100 },
+    ];
+
+    selectedIds.forEach(id => {
+      const evaluation = latestEvaluations[id];
+      if (evaluation) {
+        const agilityScore = ((maxMetrics.agility.max - evaluation.metrics.agility) / (maxMetrics.agility.max - maxMetrics.agility.min)) * 100;
+        const speedScore = ((maxMetrics.speed.max - evaluation.metrics.speed) / (maxMetrics.speed.max - maxMetrics.speed.min)) * 100;
+        
+        data[0][id] = Math.max(0, Math.min(100, agilityScore));
+        data[1][id] = Math.max(0, Math.min(100, speedScore));
+        data[2][id] = (evaluation.metrics.endurance / maxMetrics.endurance) * 100;
+        data[3][id] = (evaluation.metrics.flexibility / maxMetrics.flexibility) * 100;
+      }
+    });
+
+    return data;
+  }, [selectedIds, latestEvaluations]);
+
+  const colors = ['#38bdf8', '#f472b6', '#34d399', '#facc15', '#a78bfa'];
+
+  return (
+    <div>
+      <h2 className="text-3xl font-bold text-white mb-6">Comparativa de Jugadores</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="p-4 md:col-span-1">
+          <h3 className="text-lg font-semibold text-white mb-4">Seleccionar Jugadores</h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {players.map(player => (
+              <label key={player.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-gray-700/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(player.id)}
+                  onChange={() => handleTogglePlayer(player.id)}
+                  className="w-4 h-4 rounded bg-gray-700 border-gray-500 text-cyan-500 focus:ring-cyan-600"
+                />
+                <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full" />
+                <span className="text-sm text-gray-200">{player.name}</span>
+              </label>
+            ))}
+          </div>
+        </Card>
+        <Card className="p-6 md:col-span-2">
+            {selectedIds.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                        <PolarGrid stroke="#4A5568" />
+                        <PolarAngleAxis dataKey="subject" stroke="#A0AEC0" fontSize={14} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tickFormatter={(tick) => `${tick}%`} fontSize={10} stroke="#A0AEC0"/>
+                        {selectedIds.map((id, index) => {
+                            const player = players.find(p => p.id === id);
+                            return (
+                                <Radar 
+                                    key={id} 
+                                    name={player?.name || 'Unknown'} 
+                                    dataKey={id} 
+                                    stroke={colors[index % colors.length]} 
+                                    fill={colors[index % colors.length]} 
+                                    fillOpacity={0.6} 
+                                />
+                            )
+                        })}
+                        <Legend wrapperStyle={{fontSize: "14px"}} />
+                        <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(31, 41, 55, 0.8)', border: '1px solid #4A5568', borderRadius: '0.5rem' }} />
+                    </RadarChart>
+                </ResponsiveContainer>
+            ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                    <p>Selecciona al menos un jugador para ver la comparativa.</p>
+                </div>
+            )}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+interface MatchDayViewProps {
+  players: Player[];
+  match?: CalendarEvent;
+  setSquad: (eventId: string, squad: { calledUp: string[], notCalledUp: string[] }) => void;
+  calendarEvents: CalendarEvent[];
+}
+
+const MatchDayView: React.FC<MatchDayViewProps> = ({ players, match, setSquad, calendarEvents }) => {
+  const [calledUpIds, setCalledUpIds] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (match && match.squad) {
+      setCalledUpIds(match.squad.calledUp || []);
+    } else {
+      setCalledUpIds([]);
+    }
+  }, [match]);
+  
+  const unavailablePlayerIds = useMemo(() => {
+    if (!match) return new Set();
+    const matchDate = match.date;
+    const unavailable = new Set<string>();
+
+    calendarEvents.forEach(event => {
+      if (
+        (event.type === 'injury' && event.playerId && new Date(event.date + 'T00:00:00') <= new Date(matchDate + 'T00:00:00') && (!event.endDate || new Date(event.endDate + 'T00:00:00') >= new Date(matchDate + 'T00:00:00'))) ||
+        (event.type === 'personal' && event.playerIds && event.date === matchDate)
+      ) {
+        const playersToMakeUnavailable = event.playerId ? [event.playerId] : event.playerIds || [];
+        playersToMakeUnavailable.forEach(id => unavailable.add(id));
+      }
+    });
+    
+    return unavailable;
+  }, [match, calendarEvents]);
+
+  const handleSaveSquad = () => {
+    if (!match) return;
+    setIsSaving(true);
+    const notCalledUpIds = players
+      .map(p => p.id)
+      .filter(id => !calledUpIds.includes(id));
+    
+    setSquad(match.id, { calledUp: calledUpIds, notCalledUp: notCalledUpIds });
+    setTimeout(() => setIsSaving(false), 1000); // Simulate network latency
+  };
+
+  const togglePlayerInSquad = (playerId: string) => {
+    if (unavailablePlayerIds.has(playerId)) return;
+    setCalledUpIds(prev =>
+      prev.includes(playerId)
+        ? prev.filter(id => id !== playerId)
+        : [...prev, playerId]
+    );
+  };
+  
+  const availablePlayers = players.filter(p => !calledUpIds.includes(p.id));
+  const calledUpPlayers = calledUpIds.map(id => players.find(p => p.id === id)).filter((p): p is Player => !!p);
+
+
+  if (!match) {
+    return (
+      <Card className="p-8 text-center">
+        <TrophyIcon className="w-16 h-16 mx-auto text-gray-600 mb-4" />
+        <h2 className="text-2xl font-bold text-white">Día de Partido</h2>
+        <p className="text-gray-400 mt-2">No hay próximo partido programado.</p>
+      </Card>
+    );
+  }
+
+  const PlayerItem = ({ player, onToggle, isUnavailable }: { player: Player; onToggle: (id: string) => void; isUnavailable: boolean}) => (
+    <div 
+        className={`flex items-center justify-between p-2 rounded-lg ${isUnavailable ? 'bg-red-900/50 opacity-60' : 'bg-gray-800 hover:bg-gray-700'} transition-colors`}
+        title={isUnavailable ? 'No disponible' : ''}
+    >
+      <div className="flex items-center gap-3">
+        <img src={player.photoUrl} alt={player.name} className="w-8 h-8 rounded-full" />
+        <div>
+            <p className="text-sm font-medium text-white">{player.name}</p>
+            <p className="text-xs text-gray-400">{player.position}</p>
+        </div>
+      </div>
+      <button 
+        onClick={() => onToggle(player.id)} 
+        className={`px-3 py-1 text-xs font-semibold rounded-md ${isUnavailable ? 'cursor-not-allowed' : 'hover:bg-gray-600'}`}
+        disabled={isUnavailable}
+      >
+        {calledUpIds.includes(player.id) ? 'Quitar' : 'Añadir'}
+      </button>
+    </div>
+  );
+
+  return (
+    <div>
+      <h2 className="text-3xl font-bold text-white mb-2">Día de Partido: vs {match.opponent}</h2>
+      <p className="text-gray-400 mb-6">{new Date(match.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} a las {match.time}</p>
+      
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <h3 className="text-lg font-bold text-white p-4 border-b border-gray-700">Disponibles ({availablePlayers.length})</h3>
+          <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+            {availablePlayers.map(p => <PlayerItem key={p.id} player={p} onToggle={togglePlayerInSquad} isUnavailable={unavailablePlayerIds.has(p.id)} />)}
+          </div>
+        </Card>
+        <Card>
+          <h3 className="text-lg font-bold text-white p-4 border-b border-gray-700">Convocados ({calledUpPlayers.length})</h3>
+          <div className="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+            {calledUpPlayers.map(p => <PlayerItem key={p.id} player={p} onToggle={togglePlayerInSquad} isUnavailable={unavailablePlayerIds.has(p.id)} />)}
+          </div>
+        </Card>
+      </div>
+
+      <div className="mt-6 text-right">
+        <button
+          onClick={handleSaveSquad}
+          disabled={isSaving}
+          className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-6 rounded-lg transition-colors duration-200 disabled:bg-gray-500 disabled:cursor-not-allowed"
+        >
+          {isSaving ? 'Guardando...' : 'Guardar Convocatoria'}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
 interface CoachDashboardProps {
   players: Player[];
   evaluations: PlayerEvaluation[];
@@ -26,7 +268,7 @@ interface CoachDashboardProps {
   onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
-  onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => void;
+  onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<boolean>;
   onDeletePlayer: (playerId: string) => void;
   onAddEvaluation: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
   onUpdatePlayerPassword: (playerId: string, newPassword: string) => void;
@@ -100,8 +342,8 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
-      if (!selectedPlayer) return;
+  const handleSavePlayerUpdate = async (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
+      if (!selectedPlayer) return false;
       
       const fullPlayer: Player = {
         ...selectedPlayer,
@@ -135,8 +377,11 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
             parentEmail: updatedPlayerData.parentEmail,
         },
     };
-    props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
-    handleCloseSubView();
+    const success = await props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
+    if(success) {
+      handleCloseSubView();
+    }
+    return success;
   };
   
   const handleOpenEvalModal = () => {
@@ -1035,272 +1280,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
         </Card>
     </div>
   );
-};
-
-interface ComparisonViewProps {
-  players: Player[];
-  evaluations: PlayerEvaluation[];
-}
-
-const ComparisonView: React.FC<ComparisonViewProps> = ({ players, evaluations }) => {
-    const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>([]);
-
-    const handlePlayerToggle = (playerId: string) => {
-        setSelectedPlayerIds(prev =>
-            prev.includes(playerId) ? prev.filter(id => id !== playerId) : [...prev, playerId]
-        );
-    };
-
-    const maxMetrics = {
-        agility: { min: 15, max: 25 },
-        speed: { min: 4, max: 6 },
-        endurance: 5000,
-        flexibility: 40,
-    };
-
-    const lastEvals = players
-        .map(p => {
-            const playerEvals = evaluations
-                .filter(e => e.playerId === p.id)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            return playerEvals.length > 0 ? { ...p, lastEval: playerEvals[0].metrics } : null;
-        })
-        .filter((p): p is Player & { lastEval: EvaluationMetric } => p !== null && !!p.lastEval);
-        
-    const chartData = lastEvals
-        .filter(p => selectedPlayerIds.includes(p.id))
-        .map(p => {
-            const agilityScore = ((maxMetrics.agility.max - p.lastEval.agility) / (maxMetrics.agility.max - maxMetrics.agility.min)) * 100;
-            const speedScore = ((maxMetrics.speed.max - p.lastEval.speed) / (maxMetrics.speed.max - maxMetrics.speed.min)) * 100;
-            return {
-                name: p.name.split(' ')[0],
-                Agilidad: Math.max(0, Math.min(100, agilityScore)),
-                Velocidad: Math.max(0, Math.min(100, speedScore)),
-                Resistencia: (p.lastEval.endurance / maxMetrics.endurance) * 100,
-                Flexibilidad: (p.lastEval.flexibility / maxMetrics.flexibility) * 100,
-            }
-        });
-    
-    const radarDataMetrics = ['Agilidad', 'Velocidad', 'Resistencia', 'Flexibilidad'];
-    const radarData = radarDataMetrics.map(metric => {
-        const entry: { metric: string; [key: string]: string | number } = { metric };
-        chartData.forEach(playerData => {
-            entry[playerData.name] = playerData[metric as keyof typeof playerData];
-        });
-        return entry;
-    });
-
-    const colors = ['#38bdf8', '#f472b6', '#34d399', '#facc15', '#a78bfa'];
-
-    return (
-        <div>
-            <h2 className="text-2xl font-bold text-white mb-6">Comparativa de Rendimiento</h2>
-            <Card className="p-6 mb-6">
-                <h3 className="text-lg font-semibold text-white mb-2">Selecciona jugadores para comparar</h3>
-                <div className="flex flex-wrap gap-2">
-                    {players.map(player => (
-                        <button key={player.id} onClick={() => handlePlayerToggle(player.id)}
-                            className={`px-3 py-1 text-sm rounded-full border transition-colors ${selectedPlayerIds.includes(player.id) ? 'bg-cyan-500 text-white border-cyan-500' : 'bg-gray-700 text-gray-300 border-gray-600 hover:border-gray-400'}`}>
-                            {player.name}
-                        </button>
-                    ))}
-                </div>
-            </Card>
-            {chartData.length > 0 &&
-            <Card className="p-6">
-                <div style={{ width: '100%', height: 400 }}>
-                    <ResponsiveContainer>
-                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                            <defs>
-                                {chartData.map((player, index) => (
-                                    <radialGradient id={`color${player.name}`} key={player.name}>
-                                        <stop offset="5%" stopColor={colors[index % colors.length]} stopOpacity={0.4}/>
-                                        <stop offset="95%" stopColor={colors[index % colors.length]} stopOpacity={0.1}/>
-                                    </radialGradient>
-                                ))}
-                            </defs>
-                            <PolarGrid stroke="#4A5568" />
-                            <PolarAngleAxis dataKey="metric" stroke="#A0AEC0" fontSize={14} />
-                            <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#A0AEC0" tickFormatter={(tick: number) => `${tick}%`} />
-                            <RechartsTooltip contentStyle={{ backgroundColor: 'rgba(31, 41, 55, 0.8)', borderColor: '#4A5568', borderRadius: '0.5rem' }} />
-                            <Legend />
-                            {chartData.map((player, index) => (
-                                <Radar key={player.name} name={player.name} dataKey={player.name} stroke={colors[index % colors.length]} fill={`url(#color${player.name})`} fillOpacity={0.8} />
-                            ))}
-                        </RadarChart>
-                    </ResponsiveContainer>
-                </div>
-            </Card>
-            }
-        </div>
-    );
-};
-
-interface MatchDayViewProps {
-    players: Player[];
-    match: CalendarEvent | undefined;
-    setSquad: (eventId: string, squad: { calledUp: string[]; notCalledUp: string[] }) => void;
-    calendarEvents: CalendarEvent[];
-}
-
-const MatchDayView: React.FC<MatchDayViewProps> = ({ players, match, setSquad, calendarEvents }) => {
-    
-    const unavailablePlayersMap = useMemo(() => {
-        if (!match) return new Map();
-        
-        const unavailable = new Map<string, string>();
-        const matchDate = new Date(match.date + 'T00:00:00');
-
-        calendarEvents.forEach(event => {
-            if ((event.type === 'injury' || event.type === 'personal') && event.reason) {
-                if(event.type === 'injury' && event.playerId) {
-                    const startDate = new Date(event.date + 'T00:00:00');
-                    const endDate = event.endDate ? new Date(event.endDate + 'T00:00:00') : startDate;
-                    if (matchDate >= startDate && matchDate <= endDate) {
-                        unavailable.set(event.playerId, `Lesión: ${event.reason}`);
-                    }
-                }
-                if(event.type === 'personal' && event.playerIds) {
-                    const eventDate = new Date(event.date + 'T00:00:00');
-                    if (eventDate.getTime() === matchDate.getTime()) {
-                        event.playerIds.forEach(id => {
-                            unavailable.set(id, `Ausencia: ${event.reason}`);
-                        });
-                    }
-                }
-            }
-        });
-        return unavailable;
-    }, [match, calendarEvents]);
-
-    if (!match) {
-        return <Card className="p-6 text-center text-gray-400">No hay partidos programados.</Card>
-    }
-
-    const { squad = { calledUp: [], notCalledUp: [] } } = match;
-
-    const handleSetCalledUp = (playerId: string) => {
-        const newSquad = { ...squad };
-        newSquad.notCalledUp = newSquad.notCalledUp.filter((id: string) => id !== playerId);
-        if (!newSquad.calledUp.includes(playerId)) {
-            newSquad.calledUp.push(playerId);
-        }
-        setSquad(match.id, newSquad);
-    };
-
-    const handleSetNotCalledUp = (playerId: string) => {
-        const newSquad = { ...squad };
-        newSquad.calledUp = newSquad.calledUp.filter((id: string) => id !== playerId);
-        if (!newSquad.notCalledUp.includes(playerId)) {
-            newSquad.notCalledUp.push(playerId);
-        }
-        setSquad(match.id, newSquad);
-    };
-
-    const handleMakeAvailable = (playerId: string) => {
-        const newSquad = { ...squad };
-        newSquad.calledUp = newSquad.calledUp.filter((id: string) => id !== playerId);
-        newSquad.notCalledUp = newSquad.notCalledUp.filter((id: string) => id !== playerId);
-        setSquad(match.id, newSquad);
-    };
-
-    const unavailablePlayers = players.filter(p => unavailablePlayersMap.has(p.id));
-    const calledUpPlayers = players.filter(p => squad.calledUp.includes(p.id) && !unavailablePlayersMap.has(p.id));
-    const notCalledUpPlayers = players.filter(p => squad.notCalledUp.includes(p.id) && !unavailablePlayersMap.has(p.id));
-    const availablePlayers = players.filter(p => !squad.calledUp.includes(p.id) && !squad.notCalledUp.includes(p.id) && !unavailablePlayersMap.has(p.id));
-    
-    const matchDate = new Date(match.date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    interface PlayerItemProps {
-        player: Player;
-        listType: 'available' | 'calledUp' | 'notCalledUp' | 'unavailable';
-        reason?: string;
-    }
-    const PlayerItem: React.FC<PlayerItemProps> = ({ player, listType, reason }) => (
-        <div className="flex items-center justify-between p-2 bg-gray-700/60 rounded-lg animate-fade-in">
-            <div className="flex items-center gap-3">
-                <img src={player.photoUrl} className="w-8 h-8 rounded-full" alt={player.name}/>
-                <div>
-                  <span className="text-sm font-medium text-white">{player.name}</span>
-                  {reason && <p className="text-xs text-red-300">{reason}</p>}
-                </div>
-            </div>
-            <div className="flex gap-1">
-                 {listType === 'available' && (
-                    <>
-                        <button onClick={() => handleSetCalledUp(player.id)} className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-2 py-1 rounded-md transition-colors">Convocar</button>
-                        <button onClick={() => handleSetNotCalledUp(player.id)} className="text-xs bg-yellow-600 hover:bg-yellow-500 text-white px-2 py-1 rounded-md transition-colors">No Convocar</button>
-                    </>
-                 )}
-                 {(listType === 'calledUp' || listType === 'notCalledUp') && (
-                    <button onClick={() => handleMakeAvailable(player.id)} title="Mover a Disponibles" className="text-xs bg-gray-600 hover:bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-md transition-colors">X</button>
-                 )}
-            </div>
-        </div>
-    );
-
-    return (
-        <div className="space-y-6">
-            <div>
-                 <h2 className="text-2xl font-bold text-white mb-2">Día de Partido: vs {match.opponent}</h2>
-                 <p className="text-lg text-gray-400">{matchDate}</p>
-            </div>
-            
-             <Card className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><TrophyIcon className="w-6 h-6 text-cyan-400" /> Detalles del Partido</h3>
-                        <div className="space-y-2 text-sm">
-                            <p><strong className="text-gray-400 font-medium">Fecha:</strong> <span className="text-white">{matchDate}</span></p>
-                            <p><strong className="text-gray-400 font-medium">Hora:</strong> <span className="text-white">{match.time} H</span></p>
-                            <p><strong className="text-gray-400 font-medium">Lugar:</strong> <span className="text-white">{match.venue}</span></p>
-                        </div>
-                    </div>
-                    <div className="border-t md:border-t-0 md:border-l border-gray-700 pt-6 md:pt-0 md:pl-6">
-                        <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><MapPinIcon className="w-6 h-6 text-cyan-400" /> Detalles de la Convocatoria</h3>
-                         <div className="space-y-2 text-sm">
-                            <p><strong className="text-gray-400 font-medium">Fecha:</strong> <span className="text-white">{matchDate}</span></p>
-                            <p><strong className="text-gray-400 font-medium">Hora:</strong> <span className="text-white">{match.meetingTime} H</span></p>
-                            <p><strong className="text-gray-400 font-medium">Lugar:</strong> <span className="text-white">{match.meetingPoint}</span></p>
-                        </div>
-                    </div>
-                </div>
-            </Card>
-            
-            {unavailablePlayers.length > 0 && (
-                <Card className="p-4 border-red-500/50">
-                    <h3 className="font-semibold text-lg text-red-300 mb-4">No Disponibles ({unavailablePlayers.length})</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        {unavailablePlayers.map(p => <PlayerItem key={p.id} player={p} listType='unavailable' reason={unavailablePlayersMap.get(p.id)} />)}
-                    </div>
-                </Card>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="p-4 bg-gray-800/30">
-                    <h3 className="font-semibold text-lg text-white mb-4">Jugadores Disponibles ({availablePlayers.length})</h3>
-                    <div className="space-y-2">
-                        {availablePlayers.map(p => <PlayerItem key={p.id} player={p} listType='available' />)}
-                        {availablePlayers.length === 0 && <p className="text-xs text-gray-500 text-center py-4">No hay jugadores disponibles.</p>}
-                    </div>
-                </Card>
-                <Card className="p-4 border-cyan-500/50">
-                    <h3 className="font-semibold text-lg text-cyan-300 mb-4">Convocados ({calledUpPlayers.length})</h3>
-                    <div className="space-y-2">
-                        {calledUpPlayers.map(p => <PlayerItem key={p.id} player={p} listType='calledUp' />)}
-                        {calledUpPlayers.length === 0 && <p className="text-xs text-gray-500 text-center py-4">Añade jugadores aquí.</p>}
-                    </div>
-                </Card>
-                <Card className="p-4 border-yellow-500/50">
-                    <h3 className="font-semibold text-lg text-yellow-300 mb-4">No Convocados ({notCalledUpPlayers.length})</h3>
-                    <div className="space-y-2">
-                        {notCalledUpPlayers.map(p => <PlayerItem key={p.id} player={p} listType='notCalledUp' />)}
-                         {notCalledUpPlayers.length === 0 && <p className="text-xs text-gray-500 text-center py-4">Añade jugadores aquí.</p>}
-                    </div>
-                </Card>
-            </div>
-        </div>
-    );
 };
 
 export default CoachDashboard;

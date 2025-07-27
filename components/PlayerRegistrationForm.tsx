@@ -26,7 +26,7 @@ type FormData = {
 
 interface FormProps {
   onClose: () => void;
-  onSave: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => void;
+  onSave: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<boolean>;
   playerToEdit?: Player | null;
 }
 
@@ -36,6 +36,9 @@ const fileInputStyle = "w-full bg-gray-700 hover:bg-gray-600 text-white font-sem
 
 const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerToEdit }) => {
     const isEditMode = !!playerToEdit;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
     const [formData, setFormData] = useState<FormData>({
         name: '',
         lastName: '',
@@ -116,8 +119,11 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         }
     };
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
+        setSubmitError(null);
+        
         const dataToSave = {
             ...formData,
             jerseyNumber: parseInt(formData.jerseyNumber, 10) || 0,
@@ -125,7 +131,17 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         if (isEditMode) {
             delete (dataToSave as Partial<typeof dataToSave>).password;
         }
-        onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
+
+        try {
+            const success = await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
+            if (!success) {
+                throw new Error("No se pudo registrar al jugador. Revisa los permisos de Firebase Storage.");
+            }
+        } catch (error) {
+            console.error(error);
+            setSubmitError(error instanceof Error ? error.message : "Ha ocurrido un error inesperado.");
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -135,6 +151,8 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                 {isEditMode ? 'Editar Jugador' : 'Registro del Jugador'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
+                
+                {/* ... Form fields remain the same ... */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="name" className={labelStyle}>Nombre</label>
@@ -280,14 +298,17 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                     <label htmlFor="observations" className={labelStyle}>Observaciones</label>
                     <textarea id="observations" name="observations" rows={4} value={formData.observations} className={inputStyle} placeholder="Introduce cualquier observación" onChange={handleChange}></textarea>
                 </div>
+                
+                {submitError && <p className="text-sm text-red-400 text-center py-2">{submitError}</p>}
+
 
                 <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-colors">
-                    Cancelar
-                </button>
-                <button type="submit" className="px-8 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors">
-                    {isEditMode ? 'Guardar Cambios' : 'Registrar'}
-                </button>
+                    <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-bold rounded-lg transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" disabled={isSubmitting} className="px-8 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        {isSubmitting ? 'Registrando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar')}
+                    </button>
                 </div>
             </form>
             </Card>

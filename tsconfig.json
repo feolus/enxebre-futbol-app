@@ -21,9 +21,10 @@
     "vite-env.d.ts",
     "*.ts",
     "*.tsx",
-    "components/**/*.tsx",
-    "data/**/*.ts",
-    "services/**/*.ts"
+    "components",
+    "data",
+    "services"
   ],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.node.json" }],
+  "exclude": ["vite.config.ts"]
 }

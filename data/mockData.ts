@@ -1,4 +1,4 @@
-import type { Player, PlayerEvaluation, TrainingSession, Match, CalendarEvent } from '../types';
+import type { Player, PlayerEvaluation, TrainingSession, CalendarEvent } from '../types';
 
 const toYYYYMMDD = (date: Date): string => {
   const year = date.getFullYear();
@@ -7,8 +7,9 @@ const toYYYYMMDD = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const mockPlayers: Player[] = ([
+export const mockPlayers: Player[] = [
   {
+    id: 'p1',
     name: 'Álex López',
     lastName: 'López',
     nickname: 'El Mago',
@@ -25,11 +26,12 @@ export const mockPlayers: Player[] = ([
         idPhotoUrl: '#'
     },
     personalInfo: { age: 24, height: "185cm", weight: "80kg" },
-    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
     contactInfo: { email: 'alex.l@example.com', phone: '123-456-7890' },
     parentInfo: { fatherNamePhone: 'Juan López - 555-0101', motherNamePhone: 'Ana Pérez - 555-0102', parentEmail: 'padres.lopez@example.com' },
   },
   {
+    id: 'p2',
     name: 'Benito García',
     lastName: 'García',
     nickname: 'Ben',
@@ -46,11 +48,12 @@ export const mockPlayers: Player[] = ([
         idPhotoUrl: '#'
     },
     personalInfo: { age: 22, height: "178cm", weight: "75kg" },
-    medicalInfo: { status: 'Activo', notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Esguince leve de tobillo el mes pasado, totalmente recuperado.' },
     contactInfo: { email: 'benito.g@example.com', phone: '123-456-7891' },
     parentInfo: { fatherNamePhone: 'Luis García - 555-0201', motherNamePhone: 'María Torres - 555-0202', parentEmail: 'padres.garcia@example.com' },
   },
   {
+    id: 'p3',
     name: 'Carla Díaz',
     lastName: 'Díaz',
     nickname: 'La Roca',
@@ -67,11 +70,12 @@ export const mockPlayers: Player[] = ([
         idPhotoUrl: '#'
     },
     personalInfo: { age: 26, height: "180cm", weight: "78kg" },
-    medicalInfo: { status: 'Lesionado', notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
+    medicalInfo: { status: 'Lesionado' as const, notes: 'Distensión de isquiotibiales. Recuperación prevista: 2 semanas.' },
     contactInfo: { email: 'carla.d@example.com', phone: '123-456-7892' },
     parentInfo: { fatherNamePhone: 'Pedro Díaz - 555-0301', motherNamePhone: 'Sara Ramos - 555-0302', parentEmail: 'padres.diaz@example.com' },
   },
   {
+    id: 'p4',
     name: 'David Egea',
     lastName: 'Egea',
     nickname: 'El Muro',
@@ -88,11 +92,12 @@ export const mockPlayers: Player[] = ([
         idPhotoUrl: '#'
     },
     personalInfo: { age: 28, height: "190cm", weight: "85kg" },
-    medicalInfo: { status: 'Activo', notes: 'Sin problemas.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'Sin problemas.' },
     contactInfo: { email: 'david.e@example.com', phone: '123-456-7893' },
     parentInfo: { fatherNamePhone: 'Jorge Egea - 555-0401', motherNamePhone: 'Laura Sanz - 555-0402', parentEmail: 'padres.egea@example.com' },
   },
   {
+    id: 'p5',
     name: 'Eva Gallardo',
     lastName: 'Gallardo',
     nickname: 'Speedy',
@@ -109,11 +114,11 @@ export const mockPlayers: Player[] = ([
         idPhotoUrl: '#'
     },
     personalInfo: { age: 23, height: "175cm", weight: "68kg" },
-    medicalInfo: { status: 'Activo', notes: 'En plena forma.' },
+    medicalInfo: { status: 'Activo' as const, notes: 'En plena forma.' },
     contactInfo: { email: 'eva.g@example.com', phone: '123-456-7894' },
     parentInfo: { fatherNamePhone: 'Miguel Gallardo - 555-0501', motherNamePhone: 'Isabel Romero - 555-0502', parentEmail: 'padres.gallardo@example.com' },
   }
-] as Omit<Player, 'id'>[]).map(p => ({ ...p, id: `p${Math.random().toString(36).substr(2, 9)}` }));
+];
 
 
 export const mockEvaluations: Omit<PlayerEvaluation, 'id'>[] = [

@@ -36,9 +36,9 @@ export const seedDatabase = async () => {
 
         mockCalendarEvents.forEach(event => {
             const docRef = db.collection("calendarEvents").doc();
+            // Deep copy to avoid mutating the original mock data
             const eventData = JSON.parse(JSON.stringify(event));
-
-
+            
             if (eventData.playerId && playerMappings[eventData.playerId]) {
                 eventData.playerId = playerMappings[eventData.playerId];
             }

@@ -40,6 +40,7 @@ const App: React.FC = () => {
         setCalendarEvents(fetchedEvents);
       } catch (error) {
         console.error("Error fetching data from Firebase:", error);
+        setAuthError("No se pudo conectar a la base de datos. Comprueba tu conexión y las reglas de seguridad de Firebase.");
       } finally {
         setIsLoading(false);
       }
@@ -86,11 +87,13 @@ const App: React.FC = () => {
     return false;
   };
 
-  const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+  const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
     const result = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
     if (result) {
       setPlayers(prevPlayers => prevPlayers.map(p => p.id === result.id ? result : p));
+      return true;
     }
+    return false;
   };
   
   const handleUpdatePlayerPassword = async (playerId: string, newPassword: string) => {
@@ -162,7 +165,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (isLoading) {
-      return <div className="text-center p-10">Cargando datos...</div>;
+      return <div className="text-center p-10 text-lg font-semibold text-gray-400">Cargando datos de la nube...</div>;
     }
 
     if (currentView === 'register') {
