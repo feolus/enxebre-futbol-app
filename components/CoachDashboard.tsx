@@ -5,7 +5,7 @@ import PerformanceChart from './PerformanceChart';
 import PlayerRegistrationForm from './PlayerRegistrationForm';
 import AddEvaluationModal from './AddEvaluationModal';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, MapPinIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, ShieldCheckIcon, KeyIcon } from './Icons';
+import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, ShieldCheckIcon, KeyIcon } from './Icons';
 import StatisticsView from './StatisticsView';
 import UserManagementView from './UserManagementView';
 
