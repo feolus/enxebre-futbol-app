@@ -24,57 +24,62 @@ const App: React.FC = () => {
   const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Data fetching will be triggered after auth state is determined
-      try {
-        await firebaseServices.seedDatabase(); 
-        
-        const [fetchedPlayers, fetchedEvals, fetchedEvents] = await Promise.all([
-          firebaseServices.getPlayers(),
-          firebaseServices.getEvaluations(),
-          firebaseServices.getCalendarEvents()
-        ]);
-        setPlayers(fetchedPlayers);
-        setEvaluations(fetchedEvals);
-        setCalendarEvents(fetchedEvents);
-      } catch (error: unknown) {
-        console.error("Error fetching data from Firebase:", error);
-        setAuthError("No se pudo conectar a la base de datos. Comprueba tu conexión y las reglas de seguridad de Firebase.");
+  const loadAppData = useCallback(async (roleInfo: { role: string, playerId?: string }) => {
+    try {
+      const [fetchedPlayers, fetchedEvals, fetchedEvents] = await Promise.all([
+        firebaseServices.getPlayers(),
+        firebaseServices.getEvaluations(),
+        firebaseServices.getCalendarEvents()
+      ]);
+      setPlayers(fetchedPlayers);
+      setEvaluations(fetchedEvals);
+      setCalendarEvents(fetchedEvents);
+
+      if (roleInfo.role === 'player' && roleInfo.playerId) {
+        const playerProfile = fetchedPlayers.find(p => p.id === roleInfo.playerId);
+        setLoggedInPlayer(playerProfile || null);
       }
-    };
-    
+      
+      setUserRole(roleInfo.role as UserRole);
+      setCurrentView('dashboard');
+
+    } catch (error: unknown) {
+      console.error("Error fetching app data from Firebase:", error);
+      setAuthError("No se pudo cargar los datos de la aplicación. Comprueba tu conexión y las reglas de seguridad de Firebase.");
+      await auth.signOut(); // Log out user if data fetching fails
+    }
+  }, []);
+
+  useEffect(() => {
+    // Seed the database on first load if necessary
+    firebaseServices.seedDatabase();
+
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setIsLoading(true);
+      setAuthError('');
       if (user) {
-          const roleInfo = await firebaseServices.getUserRole(user.uid);
-          if (roleInfo) {
-              setUserRole(roleInfo.role as UserRole);
-              if (roleInfo.role === 'player' && roleInfo.playerId) {
-                  const allPlayers = await firebaseServices.getPlayers();
-                  const playerProfile = allPlayers.find(p => p.id === roleInfo.playerId);
-                  setPlayers(allPlayers);
-                  setLoggedInPlayer(playerProfile || null);
-              }
-              setCurrentView('dashboard');
-          } else {
-              // User exists in Auth but not in our role system. Log them out.
-              await auth.signOut();
-          }
+        const roleInfo = await firebaseServices.getUserRole(user.uid);
+        if (roleInfo) {
+          await loadAppData(roleInfo);
+        } else {
+          // This can happen if a user is created in Auth but their role document fails to write.
+          setAuthError('No se pudo encontrar el rol del usuario.');
+          await auth.signOut();
+        }
       } else {
-          setUserRole(null);
-          setLoggedInPlayer(null);
-          setCurrentView('login');
-      }
-       // Fetch general data after auth state is known
-      if (players.length === 0) { // Fetch only if not already fetched
-          await fetchData();
+        setUserRole(null);
+        setLoggedInPlayer(null);
+        setCurrentView('login');
+        // Clear data on logout
+        setPlayers([]);
+        setEvaluations([]);
+        setCalendarEvents([]);
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [players.length]);
+  }, [loadAppData]);
 
 
   const handleLogin = async (email: string, password?: string) => {
@@ -83,12 +88,14 @@ const App: React.FC = () => {
       setAuthError('La contraseña es obligatoria.');
       return;
     }
+    setIsLoading(true);
     try {
       await auth.signInWithEmailAndPassword(email, password);
       // onAuthStateChanged will handle the rest
     } catch (error: unknown) {
         console.error("Login error", error);
         setAuthError('Correo electrónico o contraseña incorrectos.');
+        setIsLoading(false);
     }
   };
 

@@ -28,6 +28,8 @@ export const seedDatabase = async () => {
     if (!flagDoc.exists || !flagDoc.data()?.authSeeded) {
         console.log("Seeding auth users...");
         try {
+            const originalUser = auth.currentUser; // Store original user if any
+            
             // Create Coach User
             try {
                 const coachUser = await auth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
@@ -52,10 +54,14 @@ export const seedDatabase = async () => {
             
             await flagRef.set({ authSeeded: true });
             console.log("Auth users seeded.");
-            // Sign out if any user was created and automatically signed in
-            if(auth.currentUser) {
+            
+            // Sign out the last created user and restore the original session if there was one.
+            if (originalUser) {
+                await auth.signInWithCustomToken(await originalUser.getIdToken());
+            } else if(auth.currentUser) {
                 await auth.signOut();
             }
+
         } catch(error: unknown) {
             console.error("Error during auth seeding:", error);
         }
@@ -130,6 +136,7 @@ export const getPlayers = async (): Promise<Player[]> => {
 };
 
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
+    const originalUser = auth.currentUser; // Store the currently logged-in admin/coach
     try {
         const userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
         const uid = userCredential.user?.uid;
@@ -138,9 +145,6 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         
         const playerDocRef = db.collection("players").doc();
         const newPlayerId = playerDocRef.id;
-        
-        // Log out the newly created user so the admin can continue their session
-        await auth.signOut();
 
         let photoUrl = `https://picsum.photos/seed/${newPlayerId}/200/200`;
         const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
@@ -192,9 +196,25 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         await playerDocRef.set(playerToAdd);
         await db.collection('users').doc(uid).set({ role: 'player', playerId: newPlayerId });
 
+        // Log out the newly created user and restore the admin's session
+        if (originalUser) {
+             const token = await originalUser.getIdToken(true);
+             // This part is tricky without a backend. For now, we sign out and let admin re-login.
+             // A better UX would be to use custom tokens, but that requires Firebase Functions.
+             await auth.signOut();
+             alert("Jugador creado. Por favor, vuelve a iniciar sesión para continuar.");
+        } else {
+            await auth.signOut();
+        }
+
         return { id: newPlayerId, ...playerToAdd };
     } catch (e: unknown) {
         console.error("Error adding player: ", e);
+         // If player creation fails, ensure we are logged back in as the original user if they existed
+        if(originalUser && auth.currentUser?.uid !== originalUser.uid) {
+            await auth.signOut(); // Sign out failed attempt
+            // Re-login logic would be needed here. Best to alert user.
+        }
         return null;
     }
 };
@@ -232,7 +252,6 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
 // Password management is now handled by Firebase Auth.
 // A coach/admin cannot change a user's password directly from the client SDK.
 // This would require an admin backend (e.g., Firebase Functions).
-// The onUpdatePlayerPassword function is removed for security.
 
 export const deletePlayer = async (playerId: string): Promise<boolean> => {
     try {
