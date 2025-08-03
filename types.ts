@@ -2,7 +2,6 @@
 export interface Player {
   id: string;
   authUid?: string; // UID from Firebase Auth
-  password?: string;
   name: string;
   lastName: string;
   nickname: string;

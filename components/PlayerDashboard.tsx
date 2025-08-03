@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import type { Player, CalendarEvent, Exercise, TrainingSession, PlayerEvaluation } from '../types';
+import type { Player, CalendarEvent, Exercise, PlayerEvaluation } from '../types';
 import Card from './Card';
 import PerformanceChart from './PerformanceChart';
 import { CalendarIcon, TrophyIcon, ClockIcon, MapPinIcon, BarChartSquareIcon, ActivityIcon } from './Icons';
@@ -11,7 +12,6 @@ interface PlayerDashboardProps {
   evaluations: PlayerEvaluation[];
   matchEvent?: CalendarEvent;
   calendarEvents: CalendarEvent[];
-  trainingSessions: TrainingSession[];
 }
 
 const toYYYYMMDD = (date: Date): string => {
@@ -142,7 +142,7 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
     );
 }
 
-const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, evaluations, matchEvent, calendarEvents, trainingSessions }) => {
+const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, evaluations, matchEvent, calendarEvents }) => {
   const [activeTab, setActiveTab] = useState<'session' | 'performance' | 'match' | 'statistics'>('session');
   
   const nextTrainingEvent = useMemo(() => {

@@ -5,11 +5,10 @@ import PlayerDashboard from './components/PlayerDashboard';
 import ClubDashboard from './components/ClubDashboard';
 import LoginScreen from './components/LoginScreen';
 import PlayerRegistrationForm from './components/PlayerRegistrationForm';
-import type { Player, PlayerEvaluation, CalendarEvent, TrainingSession } from './types';
+import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 import { LogoIcon, LogoutIcon } from './components/Icons';
 import * as firebaseServices from './firebaseServices';
 import { auth } from './firebaseConfig';
-import { mockTrainingSessions } from './data/mockData';
 
 type UserRole = 'coach' | 'club' | 'player';
 type View = 'login' | 'register' | 'dashboard';
@@ -24,7 +23,6 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [trainingSessions] = useState<TrainingSession[]>(mockTrainingSessions);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -218,7 +216,6 @@ const App: React.FC = () => {
                   evaluations={evaluations.filter(e => e.playerId === loggedInPlayer.id)}
                   matchEvent={upcomingMatchEvent}
                   calendarEvents={calendarEvents}
-                  trainingSessions={trainingSessions}
                />;
       default:
         return <LoginScreen onLogin={handleLogin} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
