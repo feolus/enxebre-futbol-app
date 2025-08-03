@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, ChangeEvent, FormEvent } from 'react';
 import type { Player, PlayerEvaluation, CalendarEvent, CalendarEventType, Exercise } from '../types';
 import Card from './Card';
@@ -1002,7 +1003,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
         } else {
             setAiError("La IA no pudo generar un plan. Inténtalo de nuevo con un prompt diferente.");
         }
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("Error generating training plan:", error);
         setAiError("Ocurrió un error al contactar con la IA.");
     } finally {

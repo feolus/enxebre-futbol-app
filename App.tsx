@@ -40,7 +40,7 @@ const App: React.FC = () => {
         setPlayers(fetchedPlayers);
         setEvaluations(fetchedEvals);
         setCalendarEvents(fetchedEvents);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Error fetching data from Firebase:", error);
         setAuthError("No se pudo conectar a la base de datos. Comprueba tu conexión y las reglas de seguridad de Firebase.");
       }
@@ -88,7 +88,7 @@ const App: React.FC = () => {
     try {
       await auth.signInWithEmailAndPassword(email, password);
       // onAuthStateChanged will handle the rest
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("Login error", error);
         setAuthError('Correo electrónico o contraseña incorrectos.');
     }
@@ -98,7 +98,7 @@ const App: React.FC = () => {
     try {
       await auth.signOut();
       // onAuthStateChanged will handle cleanup
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Logout error", error);
       setAuthError('Error al cerrar sesión.');
     }

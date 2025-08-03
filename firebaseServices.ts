@@ -1,3 +1,4 @@
+
 import { db, storage, auth } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 import { mockPlayers, mockEvaluations, mockCalendarEvents } from './data/mockData';
@@ -33,8 +34,9 @@ export const seedDatabase = async () => {
                 if (coachUser.user) {
                     await db.collection('users').doc(coachUser.user.uid).set({ role: 'coach' });
                 }
-            } catch (error) {
-                if (error.code !== 'auth/email-already-in-use') console.error("Error creating coach:", error);
+            } catch (error: unknown) {
+                const code = (error as {code?: string}).code;
+                if (code !== 'auth/email-already-in-use') console.error("Error creating coach:", error);
             }
 
             // Create Club User
@@ -43,8 +45,9 @@ export const seedDatabase = async () => {
                 if (clubUser.user) {
                     await db.collection('users').doc(clubUser.user.uid).set({ role: 'club' });
                 }
-            } catch (error) {
-                if (error.code !== 'auth/email-already-in-use') console.error("Error creating club:", error);
+            } catch (error: unknown) {
+                const code = (error as {code?: string}).code;
+                if (code !== 'auth/email-already-in-use') console.error("Error creating club:", error);
             }
             
             await flagRef.set({ authSeeded: true });
@@ -53,7 +56,7 @@ export const seedDatabase = async () => {
             if(auth.currentUser) {
                 await auth.signOut();
             }
-        } catch(error) {
+        } catch(error: unknown) {
             console.error("Error during auth seeding:", error);
         }
     }
@@ -190,7 +193,7 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         await db.collection('users').doc(uid).set({ role: 'player', playerId: newPlayerId });
 
         return { id: newPlayerId, ...playerToAdd };
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error adding player: ", e);
         return null;
     }
@@ -220,7 +223,7 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
         
         await playerRef.update(dataToSave);
         return updatedData;
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error updating player: ", e);
         return null;
     }
@@ -246,7 +249,7 @@ export const deletePlayer = async (playerId: string): Promise<boolean> => {
         await batch.commit();
 
         return true;
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error deleting player's Firestore data: ", e);
         return false;
     }
@@ -264,7 +267,7 @@ export const addEvaluation = async (evaluation: Omit<PlayerEvaluation, 'id'>): P
     try {
         const docRef = await db.collection("evaluations").add(evaluation);
         return { id: docRef.id, ...evaluation };
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error adding evaluation: ", e);
         return null;
     }
@@ -282,7 +285,7 @@ export const addCalendarEvent = async (event: Omit<CalendarEvent, 'id'>): Promis
     try {
         const docRef = await db.collection("calendarEvents").add(event);
         return { id: docRef.id, ...event };
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error adding calendar event: ", e);
         return null;
     }
@@ -294,7 +297,7 @@ export const updateCalendarEvent = async (event: CalendarEvent): Promise<boolean
         const { id, ...dataToSave } = event;
         await eventRef.update(dataToSave);
         return true;
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error updating calendar event: ", e);
         return false;
     }
@@ -304,7 +307,7 @@ export const deleteCalendarEvent = async (eventId: string): Promise<boolean> => 
     try {
         await db.collection("calendarEvents").doc(eventId).delete();
         return true;
-    } catch (e) {
+    } catch (e: unknown) {
         console.error("Error deleting calendar event: ", e);
         return false;
     }
