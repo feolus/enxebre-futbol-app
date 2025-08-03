@@ -198,7 +198,6 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
 
         // Log out the newly created user and restore the admin's session
         if (originalUser) {
-             const token = await originalUser.getIdToken(true);
              // This part is tricky without a backend. For now, we sign out and let admin re-login.
              // A better UX would be to use custom tokens, but that requires Firebase Functions.
              await auth.signOut();
