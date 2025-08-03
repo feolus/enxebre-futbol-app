@@ -32,9 +32,9 @@ export const seedDatabase = async () => {
             
             // Create Coach User
             try {
-                const coachUser = await auth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
-                if (coachUser.user) {
-                    await db.collection('users').doc(coachUser.user.uid).set({ role: 'coach' });
+                await auth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
+                if (auth.currentUser) {
+                    await db.collection('users').doc(auth.currentUser.uid).set({ role: 'coach' });
                 }
             } catch (error: unknown) {
                 const code = (error as {code?: string}).code;
@@ -43,27 +43,29 @@ export const seedDatabase = async () => {
 
             // Create Club User
             try {
-                const clubUser = await auth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
-                if (clubUser.user) {
-                    await db.collection('users').doc(clubUser.user.uid).set({ role: 'club' });
+                await auth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
+                if (auth.currentUser) {
+                    await db.collection('users').doc(auth.currentUser.uid).set({ role: 'club' });
                 }
             } catch (error: unknown) {
                 const code = (error as {code?: string}).code;
                 if (code !== 'auth/email-already-in-use') console.error("Error creating club:", error);
             }
             
-            await flagRef.set({ authSeeded: true });
+            await flagRef.set({ authSeeded: true }, { merge: true });
             console.log("Auth users seeded.");
             
             // Sign out the last created user and restore the original session if there was one.
+            await auth.signOut();
             if (originalUser) {
-                await auth.signInWithCustomToken(await originalUser.getIdToken());
-            } else if(auth.currentUser) {
-                await auth.signOut();
+                // This is a simplified re-login. A more robust solution might use custom tokens from a backend.
+                // For this app, we assume the user will just log back in normally.
             }
 
         } catch(error: unknown) {
             console.error("Error during auth seeding:", error);
+             // Ensure we are signed out on error
+            if (auth.currentUser) await auth.signOut();
         }
     }
 
@@ -136,8 +138,8 @@ export const getPlayers = async (): Promise<Player[]> => {
 };
 
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
-    const originalUser = auth.currentUser; // Store the currently logged-in admin/coach
     try {
+        // This function logs in the new user automatically, so we must handle auth state carefully.
         const userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
         const uid = userCredential.user?.uid;
         
@@ -196,25 +198,18 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         await playerDocRef.set(playerToAdd);
         await db.collection('users').doc(uid).set({ role: 'player', playerId: newPlayerId });
 
-        // Log out the newly created user and restore the admin's session
-        if (originalUser) {
-             // This part is tricky without a backend. For now, we sign out and let admin re-login.
-             // A better UX would be to use custom tokens, but that requires Firebase Functions.
-             await auth.signOut();
-             alert("Jugador creado. Por favor, vuelve a iniciar sesión para continuar.");
-        } else {
-            await auth.signOut();
-        }
+        // Log out the newly created user so the coach/admin can continue their session.
+        await auth.signOut();
+        alert('¡Jugador registrado con éxito! El entrenador o administrador debe volver a iniciar sesión para continuar.');
 
         return { id: newPlayerId, ...playerToAdd };
     } catch (e: unknown) {
         console.error("Error adding player: ", e);
-         // If player creation fails, ensure we are logged back in as the original user if they existed
-        if(originalUser && auth.currentUser?.uid !== originalUser.uid) {
-            await auth.signOut(); // Sign out failed attempt
-            // Re-login logic would be needed here. Best to alert user.
+        // Ensure we are signed out on error
+        if(auth.currentUser) {
+            await auth.signOut();
         }
-        return null;
+        throw e; // Re-throw the error to be caught by the caller
     }
 };
 

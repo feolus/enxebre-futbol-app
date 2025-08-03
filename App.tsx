@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [loggedInPlayer, setLoggedInPlayer] = useState<Player | null>(null);
   const [authError, setAuthError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>([]);
@@ -55,6 +56,8 @@ const App: React.FC = () => {
     firebaseServices.seedDatabase();
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (isRegistering) return; // Ignore auth changes during registration process
+
       setIsLoading(true);
       setAuthError('');
       if (user) {
@@ -79,7 +82,7 @@ const App: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [loadAppData]);
+  }, [loadAppData, isRegistering]);
 
 
   const handleLogin = async (email: string, password?: string) => {
@@ -110,14 +113,23 @@ const App: React.FC = () => {
   };
 
   const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
-    const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
-    if (newPlayer) {
-      setPlayers(prev => [...prev, newPlayer]);
-      setCurrentView('login');
-      alert('¡Jugador registrado con éxito! Ahora puedes iniciar sesión.');
-      return true;
+    setIsRegistering(true);
+    try {
+        const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
+        if (newPlayer) {
+          // The state update is temporary as the app will reload on login screen
+          setPlayers(prev => [...prev, newPlayer]); 
+          setCurrentView('login');
+          // The alert is now inside addPlayer to ensure it happens after sign out.
+          return true;
+        }
+        return false;
+    } catch(error) {
+        console.error("Failed to add player from App.tsx", error);
+        return false;
+    } finally {
+        setIsRegistering(false);
     }
-    return false;
   };
 
   const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
