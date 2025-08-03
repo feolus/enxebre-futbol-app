@@ -1,6 +1,6 @@
 
 
-import { db, storage, auth, secondaryAuth } from './firebaseConfig';
+import { db, storage, secondaryAuth } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 
 // Helper to upload a file to Firebase Storage and get URL
