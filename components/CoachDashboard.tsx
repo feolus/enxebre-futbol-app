@@ -269,7 +269,7 @@ interface CoachDashboardProps {
   onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
-  onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<boolean>;
+  onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<void>;
   onDeletePlayer: (playerId: string) => void;
   onAddEvaluation: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
 }
@@ -342,8 +342,8 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   };
 
 
-  const handleSavePlayerUpdate = async (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
-      if (!selectedPlayer) return false;
+  const handleSavePlayerUpdate = async (updatedPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<void> => {
+      if (!selectedPlayer) return;
       
       const fullPlayer: Player = {
         ...selectedPlayer,
@@ -377,11 +377,10 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
             parentEmail: updatedPlayerData.parentEmail,
         },
     };
-    const success = await props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
-    if(success) {
-      handleCloseSubView();
-    }
-    return success;
+    
+    await props.onUpdatePlayer(fullPlayer, idPhotoFile, dniFrontFile, dniBackFile);
+    // This line is only reached on success. The error is propagated to and handled by the form.
+    handleCloseSubView();
   };
   
   const handleOpenEvalModal = () => {

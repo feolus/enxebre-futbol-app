@@ -112,33 +112,35 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
+  const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<void> => {
     setIsRegistering(true);
     try {
         const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
-        if (newPlayer) {
-          // The state update is temporary as the app will reload on login screen
-          setPlayers(prev => [...prev, newPlayer]); 
-          setCurrentView('login');
-          // The alert is now inside addPlayer to ensure it happens after sign out.
-          return true;
-        }
-        return false;
+        
+        // This runs ONLY if addPlayer was successful
+        await auth.signOut(); // Sign out the newly created user.
+        alert('¡Jugador registrado con éxito! El entrenador o administrador debe volver a iniciar sesión para continuar.');
+        
+        setPlayers(prev => [...prev, newPlayer]); 
+        setCurrentView('login');
     } catch(error) {
-        console.error("Failed to add player from App.tsx", error);
-        return false;
+        console.error("Failed to add player from App.tsx:", error);
+        // The service layer now handles auth user cleanup on failure.
+        // We just re-throw the error so the form can display a specific message.
+        throw error;
     } finally {
         setIsRegistering(false);
     }
   };
 
-  const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
-    const result = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
-    if (result) {
-      setPlayers(prevPlayers => prevPlayers.map(p => p.id === result.id ? result : p));
-      return true;
+  const handleUpdatePlayer = async (updatedPlayer: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<void> => {
+    try {
+        const result = await firebaseServices.updatePlayer(updatedPlayer, idPhotoFile, dniFrontFile, dniBackFile);
+        setPlayers(prevPlayers => prevPlayers.map(p => p.id === result.id ? result : p));
+    } catch (error) {
+        console.error("Error updating player from App.tsx:", error);
+        throw error; // Re-throw for the form to handle
     }
-    return false;
   };
   
   const handleDeletePlayer = async (playerId: string) => {

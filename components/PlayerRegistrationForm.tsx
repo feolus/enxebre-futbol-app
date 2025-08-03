@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, ChangeEvent, FormEvent } from 'react';
 import Card from './Card';
 import type { Player } from '../types';
@@ -26,7 +27,7 @@ type FormData = {
 
 interface FormProps {
   onClose: () => void;
-  onSave: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<boolean>;
+  onSave: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<void>;
   playerToEdit?: Player | null;
 }
 
@@ -139,13 +140,33 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         }
 
         try {
-            const success = await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
-            if (!success) {
-                throw new Error("No se pudo registrar al jugador. El correo electrónico puede que ya esté en uso o revisa los permisos de Firebase.");
+            await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
+            // On success, the parent component (App or CoachDashboard) will handle closing/navigation.
+        } catch (error: any) {
+            console.error("Registration/Update failed in form:", error);
+            let message = "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.";
+            if (error && typeof error.code === 'string') {
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        message = 'Este correo electrónico ya está registrado. Por favor, utiliza otro.';
+                        break;
+                    case 'auth/invalid-email':
+                        message = 'El formato del correo electrónico no es válido.';
+                        break;
+                    case 'auth/weak-password':
+                        message = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+                        break;
+                    case 'auth/network-request-failed':
+                         message = 'Error de red. Comprueba tu conexión a internet e inténtalo de nuevo.';
+                         break;
+                    default:
+                        message = `Error de autenticación: ${error.message}`;
+                }
+            } else if (error instanceof Error) {
+                message = error.message;
             }
-        } catch (error) {
-            console.error(error);
-            setSubmitError(error instanceof Error ? error.message : "Ha ocurrido un error inesperado.");
+            setSubmitError(message);
+        } finally {
             setIsSubmitting(false);
         }
     };

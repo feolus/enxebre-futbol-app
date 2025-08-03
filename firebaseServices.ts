@@ -137,14 +137,17 @@ export const getPlayers = async (): Promise<Player[]> => {
     return playerSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Player));
 };
 
-export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
+export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player> => {
+    let userCredential;
     try {
-        // This function logs in the new user automatically, so we must handle auth state carefully.
-        const userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
+        // 1. Create user in Auth. This logs in the new user automatically.
+        userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
         const uid = userCredential.user?.uid;
+        if (!uid) {
+            throw new Error("Firebase Auth user creation failed, no UID returned.");
+        }
         
-        if (!uid) throw new Error("Firebase Auth user creation failed.");
-        
+        // 2. Prepare player document and upload files
         const playerDocRef = db.collection("players").doc();
         const newPlayerId = playerDocRef.id;
 
@@ -195,26 +198,35 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        await playerDocRef.set(playerToAdd);
-        await db.collection('users').doc(uid).set({ role: 'player', playerId: newPlayerId });
+        // 3. Save player and user role data to Firestore
+        const userDocRef = db.collection('users').doc(uid);
+        const batch = db.batch();
+        batch.set(playerDocRef, playerToAdd);
+        batch.set(userDocRef, { role: 'player', playerId: newPlayerId });
+        await batch.commit();
 
-        // Log out the newly created user so the coach/admin can continue their session.
-        await auth.signOut();
-        alert('¡Jugador registrado con éxito! El entrenador o administrador debe volver a iniciar sesión para continuar.');
 
+        // 4. Return the complete new player object. The caller will handle auth state.
         return { id: newPlayerId, ...playerToAdd };
-    } catch (e: unknown) {
-        console.error("Error adding player: ", e);
-        // Ensure we are signed out on error
-        if(auth.currentUser) {
-            await auth.signOut();
+    } catch (error: any) {
+        // If user was created in Auth but something else failed (e.g., Firestore write),
+        // delete the user to prevent an inconsistent state (orphaned auth user).
+        if (userCredential && userCredential.user) {
+            try {
+                await userCredential.user.delete();
+                console.log("Successfully deleted partially created auth user.");
+            } catch (deleteError) {
+                console.error("Critical: Failed to delete partially created auth user. Manual cleanup may be required.", deleteError);
+            }
         }
-        throw e; // Re-throw the error to be caught by the caller
+        console.error("Error during player addition transaction:", error);
+        // Re-throw the original error so the UI can display a specific message
+        throw error;
     }
 };
 
 
-export const updatePlayer = async (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
+export const updatePlayer = async (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player> => {
     try {
         const playerRef = db.collection("players").doc(player.id);
         
@@ -239,7 +251,7 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
         return updatedData;
     } catch (e: unknown) {
         console.error("Error updating player: ", e);
-        return null;
+        throw e; // Re-throw the error for the caller to handle
     }
 };
 
