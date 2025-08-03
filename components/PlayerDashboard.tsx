@@ -31,7 +31,7 @@ const ExerciseDetail: React.FC<ExerciseDetailProps> = ({ exercise, type }) => (
             <div className="flex-shrink-0">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
                     type === 'warmup' ? 'bg-yellow-500/20 text-yellow-300' : 
-                    type === 'main' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-green-500/20 text-green-300'
+                    type === 'cooldown' ? 'bg-green-500/20 text-green-300' : 'bg-cyan-500/20 text-cyan-300' 
                 }`}>
                     {type.charAt(0).toUpperCase()}
                 </div>
@@ -52,7 +52,7 @@ interface TrainingSessionViewProps {
   event: CalendarEvent;
 }
 const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
-    const [activeTab, setActiveTab] = useState<'material' | 'warmup' | 'main' | 'cooldown'>('material');
+    const [activeTab, setActiveTab] = useState<'material' | 'warmup' | 'main' | 'cooldown'>('warmup');
 
     const tabButtonStyle = (isActive: boolean) =>
       `px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2 ${
@@ -62,6 +62,8 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
       }`;
       
     const mainExercises = event.mainExercises || [];
+    const warmupExercises = event.warmup || [];
+    const cooldownExercises = event.cooldown || [];
 
     return (
       <div className="bg-gray-800 rounded-lg flex flex-col h-full">
@@ -78,9 +80,6 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
         
         <div className="border-b border-gray-700 px-6">
             <nav className="-mb-px flex space-x-4" aria-label="Tabs">
-                <button onClick={() => setActiveTab('material')} className={tabButtonStyle(activeTab === 'material')}>
-                    Material
-                </button>
                 <button onClick={() => setActiveTab('warmup')} className={tabButtonStyle(activeTab === 'warmup')}>
                     Calentamiento
                 </button>
@@ -89,6 +88,9 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
                 </button>
                 <button onClick={() => setActiveTab('cooldown')} className={tabButtonStyle(activeTab === 'cooldown')}>
                     Estiramientos
+                </button>
+                 <button onClick={() => setActiveTab('material')} className={tabButtonStyle(activeTab === 'material')}>
+                    Material
                 </button>
             </nav>
         </div>
@@ -100,19 +102,19 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
                  <ul className="list-disc list-inside text-sm text-gray-400 pl-4 space-y-1">
                     <li>Botas de fútbol</li>
                     <li>Zapatillas para correr</li>
+                    <li>Ropa de entrenamiento adecuada</li>
+                    <li>Botella de agua personal</li>
                 </ul>
             </div>
           )}
           {activeTab === 'warmup' && (
-            <div className="text-gray-300 space-y-4">
-                <div>
-                    <h4 className="font-semibold text-white">1. Movilidad articular:</h4>
-                    <p className="text-sm text-gray-400 pl-4">Dedica tiempo a la movilidad de tobillos, rodillas, caderas, cintura y hombros para preparar las articulaciones para la actividad.</p>
-                </div>
-                <div>
-                    <h4 className="font-semibold text-white">2. Estiramientos dinámicos:</h4>
-                    <p className="text-sm text-gray-400 pl-4">Incluye ejercicios como balanceo de piernas, desplazamientos laterales, skipping, saltos suaves, rotación de tronco y brazos, y desplantes (lunges). Estos preparan los músculos para el movimiento y el esfuerzo.</p>
-                </div>
+            <div className="flow-root">
+                <ul role="list" className="divide-y divide-gray-700 -my-3">
+                    {warmupExercises.map((ex: Exercise) => <ExerciseDetail key={ex.id} exercise={ex} type="warmup" />)}
+                </ul>
+                {warmupExercises.length === 0 && (
+                    <p className="text-center text-sm text-gray-500 pt-8">No hay ejercicios de calentamiento asignados para esta sesión.</p>
+                )}
             </div>
           )}
           {activeTab === 'main' && (
@@ -126,19 +128,13 @@ const TrainingSessionView: React.FC<TrainingSessionViewProps> = ({ event }) => {
             </div>
           )}
           {activeTab === 'cooldown' && (
-            <div className="text-gray-300 space-y-2">
-                <h4 className="font-semibold text-white">Estiramientos recomendados:</h4>
-                 <ul className="list-disc list-inside text-sm text-gray-400 pl-4 space-y-1">
-                    <li>Extensor dedos del pie</li>
-                    <li>Gemelos</li>
-                    <li>Cuádriceps</li>
-                    <li>Abductores</li>
-                    <li>Zona Lumbar</li>
-                    <li>Glúteos y Rotadores de Cadera</li>
-                    <li>Zona Cervical</li>
-                    <li>Hombros y Espalda</li>
-                    <li>Cadena Posterior</li>
+            <div className="flow-root">
+                <ul role="list" className="divide-y divide-gray-700 -my-3">
+                    {cooldownExercises.map((ex: Exercise) => <ExerciseDetail key={ex.id} exercise={ex} type="cooldown" />)}
                 </ul>
+                {cooldownExercises.length === 0 && (
+                    <p className="text-center text-sm text-gray-500 pt-8">No hay ejercicios de enfriamiento asignados para esta sesión.</p>
+                )}
             </div>
           )}
         </div>
@@ -152,7 +148,7 @@ const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, e
   const nextTrainingEvent = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const event = calendarEvents
+    return calendarEvents
       .filter(e =>
         e.type === 'training' &&
         new Date(e.date + 'T00:00:00') >= today &&
@@ -160,15 +156,7 @@ const PlayerDashboard: React.FC<PlayerDashboardProps> = ({ player, allPlayers, e
       )
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     [0];
-
-    if (event && event.trainingSessionId) {
-        const sessionDetails = trainingSessions.find(s => s.id === event.trainingSessionId);
-        if (sessionDetails) {
-            return { ...event, ...sessionDetails };
-        }
-    }
-    return event;
-  }, [calendarEvents, player.id, trainingSessions]);
+  }, [calendarEvents, player.id]);
 
   const { attendanceCount, totalActivities, attendancePercentage } = useMemo(() => {
     const activityDates = new Set(

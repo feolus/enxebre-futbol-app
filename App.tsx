@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import CoachDashboard from './components/CoachDashboard';
 import PlayerDashboard from './components/PlayerDashboard';
@@ -7,13 +8,14 @@ import PlayerRegistrationForm from './components/PlayerRegistrationForm';
 import type { Player, PlayerEvaluation, CalendarEvent, TrainingSession } from './types';
 import { LogoIcon, LogoutIcon } from './components/Icons';
 import * as firebaseServices from './firebaseServices';
+import { auth } from './firebaseConfig';
 import { mockTrainingSessions } from './data/mockData';
 
-type UserRole = 'coach' | 'club' | 'player' | null;
+type UserRole = 'coach' | 'club' | 'player';
 type View = 'login' | 'register' | 'dashboard';
 
 const App: React.FC = () => {
-  const [userRole, setUserRole] = useState<UserRole>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [currentView, setCurrentView] = useState<View>('login');
   const [loggedInPlayer, setLoggedInPlayer] = useState<Player | null>(null);
   const [authError, setAuthError] = useState<string>('');
@@ -26,7 +28,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true);
+      // Data fetching will be triggered after auth state is determined
       try {
         await firebaseServices.seedDatabase(); 
         
@@ -41,40 +43,65 @@ const App: React.FC = () => {
       } catch (error) {
         console.error("Error fetching data from Firebase:", error);
         setAuthError("No se pudo conectar a la base de datos. Comprueba tu conexión y las reglas de seguridad de Firebase.");
-      } finally {
-        setIsLoading(false);
       }
     };
-    fetchData();
-  }, []);
-
-  const handleLogin = (role: 'coach' | 'club' | 'player', password?: string, playerId?: string) => {
-    setAuthError('');
-    if (role === 'coach' && password === 'coach123') {
-      setUserRole('coach');
-      setCurrentView('dashboard');
-    } else if (role === 'club' && password === 'club2025-26') {
-      setUserRole('club');
-      setCurrentView('dashboard');
-    } else if (role === 'player' && playerId && password) {
-      const player = players.find(p => p.id === playerId);
-      if (player && player.password === password) {
-        setLoggedInPlayer(player);
-        setUserRole('player');
-        setCurrentView('dashboard');
+    
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setIsLoading(true);
+      if (user) {
+          const roleInfo = await firebaseServices.getUserRole(user.uid);
+          if (roleInfo) {
+              setUserRole(roleInfo.role as UserRole);
+              if (roleInfo.role === 'player' && roleInfo.playerId) {
+                  const allPlayers = await firebaseServices.getPlayers();
+                  const playerProfile = allPlayers.find(p => p.id === roleInfo.playerId);
+                  setPlayers(allPlayers);
+                  setLoggedInPlayer(playerProfile || null);
+              }
+              setCurrentView('dashboard');
+          } else {
+              // User exists in Auth but not in our role system. Log them out.
+              await auth.signOut();
+          }
       } else {
-        setAuthError('Jugador o contraseña incorrectos.');
+          setUserRole(null);
+          setLoggedInPlayer(null);
+          setCurrentView('login');
       }
-    } else {
-      setAuthError('Credenciales incorrectas.');
+       // Fetch general data after auth state is known
+      if (players.length === 0) { // Fetch only if not already fetched
+          await fetchData();
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [players.length]);
+
+
+  const handleLogin = async (email: string, password?: string) => {
+    setAuthError('');
+    if (!password) {
+      setAuthError('La contraseña es obligatoria.');
+      return;
+    }
+    try {
+      await auth.signInWithEmailAndPassword(email, password);
+      // onAuthStateChanged will handle the rest
+    } catch (error) {
+        console.error("Login error", error);
+        setAuthError('Correo electrónico o contraseña incorrectos.');
     }
   };
 
-  const handleLogout = () => {
-    setUserRole(null);
-    setLoggedInPlayer(null);
-    setAuthError('');
-    setCurrentView('login');
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      // onAuthStateChanged will handle cleanup
+    } catch (error) {
+      console.error("Logout error", error);
+      setAuthError('Error al cerrar sesión.');
+    }
   };
 
   const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<boolean> => {
@@ -82,6 +109,7 @@ const App: React.FC = () => {
     if (newPlayer) {
       setPlayers(prev => [...prev, newPlayer]);
       setCurrentView('login');
+      alert('¡Jugador registrado con éxito! Ahora puedes iniciar sesión.');
       return true;
     }
     return false;
@@ -96,15 +124,6 @@ const App: React.FC = () => {
     return false;
   };
   
-  const handleUpdatePlayerPassword = async (playerId: string, newPassword: string) => {
-    const success = await firebaseServices.updatePlayerPassword(playerId, newPassword);
-    if (success) {
-      setPlayers(prevPlayers => prevPlayers.map(p => 
-          p.id === playerId ? { ...p, password: newPassword } : p
-      ));
-    }
-  };
-
   const handleDeletePlayer = async (playerId: string) => {
     const success = await firebaseServices.deletePlayer(playerId);
     if (success) {
@@ -165,7 +184,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (isLoading) {
-      return <div className="text-center p-10 text-lg font-semibold text-gray-400">Cargando datos de la nube...</div>;
+      return <div className="text-center p-10 text-lg font-semibold text-gray-400">Cargando...</div>;
     }
 
     if (currentView === 'register') {
@@ -173,7 +192,7 @@ const App: React.FC = () => {
     }
 
     if (currentView === 'login' || !userRole) {
-      return <LoginScreen onLogin={handleLogin} players={players} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
+      return <LoginScreen onLogin={handleLogin} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
     }
 
     switch (userRole) {
@@ -188,12 +207,11 @@ const App: React.FC = () => {
                   onUpdatePlayer={handleUpdatePlayer}
                   onDeletePlayer={handleDeletePlayer}
                   onAddEvaluation={handleAddEvaluation}
-                  onUpdatePlayerPassword={handleUpdatePlayerPassword}
                 />;
       case 'club':
         return <ClubDashboard players={players} calendarEvents={calendarEvents} />;
       case 'player':
-        if (!loggedInPlayer) return null;
+        if (!loggedInPlayer) return <div className="text-center p-10 text-lg font-semibold text-gray-400">Cargando perfil del jugador...</div>;
         return <PlayerDashboard 
                   player={loggedInPlayer} 
                   allPlayers={players}
@@ -203,7 +221,7 @@ const App: React.FC = () => {
                   trainingSessions={trainingSessions}
                />;
       default:
-        return <LoginScreen onLogin={handleLogin} players={players} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
+        return <LoginScreen onLogin={handleLogin} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
     }
   };
   

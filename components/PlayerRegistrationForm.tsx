@@ -74,7 +74,7 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                 idNumber: playerToEdit.idNumber || '',
                 phone: playerToEdit.contactInfo.phone || '',
                 email: playerToEdit.contactInfo.email || '',
-                password: playerToEdit.password || '',
+                password: '', // Password is not edited here
                 position: playerToEdit.position || '',
                 jerseyNumber: String(playerToEdit.jerseyNumber) || '',
                 previousClub: playerToEdit.previousClub || '',
@@ -121,6 +121,12 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
+        
+        if (!isEditMode && (!formData.password || formData.password.length < 6)) {
+             setSubmitError("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
+             return;
+        }
+
         setIsSubmitting(true);
         setSubmitError(null);
         
@@ -135,7 +141,7 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         try {
             const success = await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
             if (!success) {
-                throw new Error("No se pudo registrar al jugador. Revisa los permisos de Firebase Storage.");
+                throw new Error("No se pudo registrar al jugador. El correo electrónico puede que ya esté en uso o revisa los permisos de Firebase.");
             }
         } catch (error) {
             console.error(error);
@@ -152,7 +158,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
             </h2>
             <form onSubmit={handleSubmit} className="space-y-6">
                 
-                {/* ... Form fields remain the same ... */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="name" className={labelStyle}>Nombre</label>
@@ -175,13 +180,13 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                         <input type="tel" id="phone" name="phone" value={formData.phone} className={inputStyle} placeholder="Introduce tu número de teléfono" onChange={handleChange} />
                     </div>
                     <div>
-                        <label htmlFor="email" className={labelStyle}>Correo Electrónico</label>
-                        <input type="email" id="email" name="email" value={formData.email} className={inputStyle} placeholder="Introduce tu correo electrónico" onChange={handleChange} />
+                        <label htmlFor="email" className={labelStyle}>Correo Electrónico (será tu usuario)</label>
+                        <input type="email" id="email" name="email" value={formData.email} className={inputStyle} placeholder="Introduce tu correo electrónico" onChange={handleChange} required disabled={isEditMode} />
                     </div>
                     {!isEditMode && (
                         <div>
                             <label htmlFor="password" className={labelStyle}>Contraseña</label>
-                            <input type="password" id="password" name="password" value={formData.password} className={inputStyle} placeholder="Crea una contraseña segura" onChange={handleChange} required />
+                            <input type="password" id="password" name="password" value={formData.password} className={inputStyle} placeholder="Crea una contraseña segura (mín. 6 caracteres)" onChange={handleChange} required />
                         </div>
                     )}
                     <div>
@@ -307,7 +312,7 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                         Cancelar
                     </button>
                     <button type="submit" disabled={isSubmitting} className="px-8 py-2 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
-                        {isSubmitting ? 'Registrando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar')}
+                        {isSubmitting ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Registrar')}
                     </button>
                 </div>
             </form>

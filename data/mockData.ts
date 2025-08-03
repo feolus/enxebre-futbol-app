@@ -19,7 +19,6 @@ export const mockPlayers: Player[] = [
     photoUrl: 'https://picsum.photos/seed/p1/200/200',
     previousClub: 'Juveniles FC',
     observations: 'Gran potencial en jugadas a balón parado.',
-    password: 'player123',
     documents: {
         dniFrontUrl: '#',
         dniBackUrl: '#',
@@ -41,7 +40,6 @@ export const mockPlayers: Player[] = [
     photoUrl: 'https://picsum.photos/seed/p2/200/200',
     previousClub: 'CD Valiente',
     observations: 'Excelente visión de juego.',
-    password: 'player123',
     documents: {
         dniFrontUrl: '#',
         dniBackUrl: '#',
@@ -63,7 +61,6 @@ export const mockPlayers: Player[] = [
     photoUrl: 'https://picsum.photos/seed/p3/200/200',
     previousClub: 'Unión Deportiva',
     observations: 'Fuerte en el uno contra uno.',
-    password: 'player123',
     documents: {
         dniFrontUrl: '#',
         dniBackUrl: '#',
@@ -85,7 +82,6 @@ export const mockPlayers: Player[] = [
     photoUrl: 'https://picsum.photos/seed/p4/200/200',
     previousClub: 'CF Metrópolis',
     observations: 'Buenos reflejos y liderazgo.',
-    password: 'player123',
     documents: {
         dniFrontUrl: '#',
         dniBackUrl: '#',
@@ -107,7 +103,6 @@ export const mockPlayers: Player[] = [
     photoUrl: 'https://picsum.photos/seed/p5/200/200',
     previousClub: 'Sporting Capital',
     observations: 'Muy rápida y con gran resistencia.',
-    password: 'player123',
     documents: {
         dniFrontUrl: '#',
         dniBackUrl: '#',

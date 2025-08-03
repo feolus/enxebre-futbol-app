@@ -1,6 +1,11 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import type { TrainingSession, Exercise } from '../types';
 
+// IMPORTANT: Set your API key in a .env file
+// Create a file named .env in the root of your project
+// and add the following line:
+// VITE_API_KEY=YOUR_API_KEY_HERE
+
 const apiKey = import.meta.env.VITE_API_KEY;
 
 if (!apiKey) {

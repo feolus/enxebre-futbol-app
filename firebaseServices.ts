@@ -1,4 +1,4 @@
-import { db, storage } from './firebaseConfig';
+import { db, storage, auth } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 import { mockPlayers, mockEvaluations, mockCalendarEvents } from './data/mockData';
 
@@ -9,16 +9,65 @@ const uploadFile = async (file: File, path: string): Promise<string> => {
     return await snapshot.ref.getDownloadURL();
 };
 
+// --- Role Service ---
+export const getUserRole = async (uid: string): Promise<{role: string, playerId?: string} | null> => {
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (userDoc.exists) {
+        return userDoc.data() as {role: string, playerId?: string};
+    }
+    return null;
+}
+
 // --- Seeding Service ---
 export const seedDatabase = async () => {
+    // Seed Auth users (coach and club) only once
+    const flagRef = db.collection('internal').doc('seedingFlags');
+    const flagDoc = await flagRef.get();
+
+    if (!flagDoc.exists || !flagDoc.data()?.authSeeded) {
+        console.log("Seeding auth users...");
+        try {
+            // Create Coach User
+            try {
+                const coachUser = await auth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
+                if (coachUser.user) {
+                    await db.collection('users').doc(coachUser.user.uid).set({ role: 'coach' });
+                }
+            } catch (error) {
+                if (error.code !== 'auth/email-already-in-use') console.error("Error creating coach:", error);
+            }
+
+            // Create Club User
+            try {
+                const clubUser = await auth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
+                if (clubUser.user) {
+                    await db.collection('users').doc(clubUser.user.uid).set({ role: 'club' });
+                }
+            } catch (error) {
+                if (error.code !== 'auth/email-already-in-use') console.error("Error creating club:", error);
+            }
+            
+            await flagRef.set({ authSeeded: true });
+            console.log("Auth users seeded.");
+            // Sign out if any user was created and automatically signed in
+            if(auth.currentUser) {
+                await auth.signOut();
+            }
+        } catch(error) {
+            console.error("Error during auth seeding:", error);
+        }
+    }
+
+    // Seed Firestore data
     const playersCol = db.collection("players");
     const playerSnapshot = await playersCol.limit(1).get();
     if (playerSnapshot.empty) {
-        console.log("Database is empty. Seeding...");
+        console.log("Database is empty. Seeding Firestore data...");
         const batch = db.batch();
 
         const playerMappings: Record<string, string> = {};
 
+        // Seed players without auth accounts
         mockPlayers.forEach(player => {
             const docRef = db.collection("players").doc();
             playerMappings[player.id] = docRef.id;
@@ -26,11 +75,12 @@ export const seedDatabase = async () => {
             batch.set(docRef, playerData);
         });
 
+        // Seed evaluations and events with mappings
         mockEvaluations.forEach(evaluation => {
             const newPlayerId = playerMappings[evaluation.playerId];
             if (newPlayerId) {
                 const docRef = db.collection("evaluations").doc();
-                batch.set(docRef, { ...evaluation, playerId: newPlayerId });
+                batch.set(docRef, { ...evaluation, id: docRef.id, playerId: newPlayerId });
             }
         });
 
@@ -63,7 +113,7 @@ export const seedDatabase = async () => {
         });
 
         await batch.commit();
-        console.log("Database seeded successfully!");
+        console.log("Firestore Database seeded successfully!");
     }
 };
 
@@ -78,8 +128,16 @@ export const getPlayers = async (): Promise<Player[]> => {
 
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
     try {
-        const docRef = db.collection("players").doc();
-        const newPlayerId = docRef.id;
+        const userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
+        const uid = userCredential.user?.uid;
+        
+        if (!uid) throw new Error("Firebase Auth user creation failed.");
+        
+        const playerDocRef = db.collection("players").doc();
+        const newPlayerId = playerDocRef.id;
+        
+        // Log out the newly created user so the admin can continue their session
+        await auth.signOut();
 
         let photoUrl = `https://picsum.photos/seed/${newPlayerId}/200/200`;
         const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
@@ -96,6 +154,7 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         }
 
         const playerToAdd: Omit<Player, 'id'> = {
+            authUid: uid,
             photoUrl: photoUrl,
             documents: documents,
             name: `${playerData.name} ${playerData.lastName}`,
@@ -106,7 +165,6 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             position: playerData.position,
             previousClub: playerData.previousClub,
             observations: playerData.observations,
-            password: playerData.password,
             personalInfo: {
                 age: parseInt(playerData.age, 10) || 0,
                 height: playerData.height,
@@ -128,13 +186,16 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        await docRef.set(playerToAdd);
+        await playerDocRef.set(playerToAdd);
+        await db.collection('users').doc(uid).set({ role: 'player', playerId: newPlayerId });
+
         return { id: newPlayerId, ...playerToAdd };
     } catch (e) {
         console.error("Error adding player: ", e);
         return null;
     }
 };
+
 
 export const updatePlayer = async (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player | null> => {
     try {
@@ -165,19 +226,17 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
     }
 };
 
-export const updatePlayerPassword = async (playerId: string, newPassword: string):Promise<boolean> => {
-    try {
-        const playerRef = db.collection("players").doc(playerId);
-        await playerRef.update({ password: newPassword });
-        return true;
-    } catch (e) {
-        console.error("Error updating password: ", e);
-        return false;
-    }
-}
+// Password management is now handled by Firebase Auth.
+// A coach/admin cannot change a user's password directly from the client SDK.
+// This would require an admin backend (e.g., Firebase Functions).
+// The onUpdatePlayerPassword function is removed for security.
 
 export const deletePlayer = async (playerId: string): Promise<boolean> => {
     try {
+        // Note: This does NOT delete the Firebase Auth user.
+        // Deleting users requires admin privileges and should be done via a backend service
+        // like Firebase Cloud Functions for security reasons.
+        
         await db.collection("players").doc(playerId).delete();
         
         const evalsQuery = db.collection("evaluations").where("playerId", "==", playerId);
@@ -188,7 +247,7 @@ export const deletePlayer = async (playerId: string): Promise<boolean> => {
 
         return true;
     } catch (e) {
-        console.error("Error deleting player: ", e);
+        console.error("Error deleting player's Firestore data: ", e);
         return false;
     }
 };

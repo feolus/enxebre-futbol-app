@@ -1,28 +1,19 @@
 import React, { useState, ChangeEvent, FormEvent } from 'react';
-import type { Player } from '../types';
 import Card from './Card';
 
-type Role = 'coach' | 'club' | 'player';
-
 interface LoginScreenProps {
-  onLogin: (role: Role, password?: string, playerId?: string) => void;
-  players: Player[];
+  onLogin: (email: string, password?: string) => void;
   error: string;
   onSwitchToRegister: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSwitchToRegister }) => {
-  const [role, setRole] = useState<Role>('coach');
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error, onSwitchToRegister }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(players[0]?.id || '');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (role === 'player') {
-      onLogin(role, password, selectedPlayerId);
-    } else {
-      onLogin(role, password);
-    }
+    onLogin(email, password);
   };
 
   const inputStyle = "w-full bg-gray-800 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500";
@@ -32,65 +23,34 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, players, error, onSw
     <div className="flex items-center justify-center min-h-[60vh]">
       <Card className="w-full max-w-md p-8">
         <h2 className="text-2xl font-bold text-center text-white mb-2">Bienvenido a Enxebre Futbol</h2>
-        <p className="text-center text-gray-400 mb-6">Selecciona tu rol para continuar</p>
+        <p className="text-center text-gray-400 mb-6">Inicia sesión para continuar</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="role" className={labelStyle}>Rol</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) => setRole(e.target.value as Role)}
+            <label htmlFor="email" className={labelStyle}>Correo Electrónico</label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
               className={inputStyle}
-            >
-              <option value="coach">Entrenador</option>
-              <option value="club">Club</option>
-              <option value="player">Jugador</option>
-            </select>
+              placeholder="tu@email.com"
+              required
+            />
           </div>
-
-          {role === 'player' ? (
-            <>
-              <div>
-                <label htmlFor="player" className={labelStyle}>Selecciona tu Perfil</label>
-                <select
-                  id="player"
-                  value={selectedPlayerId}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setSelectedPlayerId(e.target.value)}
-                  className={inputStyle}
-                >
-                  {players.map(player => (
-                    <option key={player.id} value={player.id}>
-                      {player.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-               <div>
-                <label htmlFor="password" className={labelStyle}>Contraseña</label>
-                <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                    className={inputStyle}
-                    placeholder="Tu contraseña"
-                />
-              </div>
-            </>
-          ) : (
-            <div>
-              <label htmlFor="password" className={labelStyle}>Contraseña</label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                className={inputStyle}
-                placeholder="Introduce la contraseña"
-              />
-            </div>
-          )}
+          
+          <div>
+            <label htmlFor="password" className={labelStyle}>Contraseña</label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+              className={inputStyle}
+              placeholder="Introduce la contraseña"
+              required
+            />
+          </div>
 
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 

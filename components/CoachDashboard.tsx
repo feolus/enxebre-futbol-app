@@ -5,11 +5,11 @@ import PerformanceChart from './PerformanceChart';
 import PlayerRegistrationForm from './PlayerRegistrationForm';
 import AddEvaluationModal from './AddEvaluationModal';
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
-import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, ShieldCheckIcon, KeyIcon } from './Icons';
+import { UsersIcon, CalendarIcon, ChartIcon, TrophyIcon, SearchIcon, ChevronLeftIcon, ChevronRightIcon, PlusCircleIcon, ActivityIcon, ShieldIcon, HeartPulseIcon, UserMinusIcon, SoccerBallIcon, BarChartSquareIcon, EditIcon, TrashIcon, ClipboardPlusIcon, ShieldCheckIcon, SparklesIcon } from './Icons';
 import StatisticsView from './StatisticsView';
-import UserManagementView from './UserManagementView';
+import { generateTrainingPlan } from '../services/geminiService';
 
-type Tab = 'club' | 'planner' | 'comparison' | 'matchday' | 'statistics' | 'userManagement';
+type Tab = 'club' | 'planner' | 'comparison' | 'matchday' | 'statistics';
 type View = 'list' | 'profile' | 'edit';
 
 const toYYYYMMDD = (date: Date): string => {
@@ -271,7 +271,6 @@ interface CoachDashboardProps {
   onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<boolean>;
   onDeletePlayer: (playerId: string) => void;
   onAddEvaluation: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
-  onUpdatePlayerPassword: (playerId: string, newPassword: string) => void;
 }
 
 const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
@@ -324,7 +323,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
     props.onUpdatePlayer(updatedPlayer, null, null, null);
 
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setUTCHours(0,0,0,0);
     const todayString = toYYYYMMDD(today);
 
     const activeInjury = props.calendarEvents.find(event =>
@@ -445,8 +444,6 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
                 />;
       case 'statistics':
         return <StatisticsView events={props.calendarEvents} players={props.players} />;
-      case 'userManagement':
-        return <UserManagementView players={props.players} onUpdatePassword={props.onUpdatePlayerPassword} />;
       default:
         return <ClubView players={props.players} calendarEvents={props.calendarEvents} onSelectPlayer={handleSelectPlayer} onEditPlayer={handleEditPlayer} onDeletePlayer={handleDeleteClick}/>;
     }
@@ -474,7 +471,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'comparison', name: 'Comparativa', icon: ChartIcon },
     { id: 'statistics', name: 'Estadísticas', icon: BarChartSquareIcon },
     { id: 'matchday', name: 'Día de Partido', icon: TrophyIcon },
-    { id: 'userManagement', name: 'Información de Usuarios', icon: KeyIcon },
   ];
 
   return (
@@ -952,15 +948,24 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
   const [assists, setAssists] = useState<string[]>([]);
   const [tempScorer, setTempScorer] = useState('');
   const [tempAssister, setTempAssister] = useState('');
+  
+  const [warmup, setWarmup] = useState<Exercise[]>([]);
   const [mainExercises, setMainExercises] = useState<Exercise[]>([]);
+  const [cooldown, setCooldown] = useState<Exercise[]>([]);
   const [currentExercise, setCurrentExercise] = useState({ name: '', description: '', sets: '', reps: '' });
+
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiError, setAiError] = useState('');
   
   useEffect(() => {
     if (isEditMode && eventToEdit) {
       const { id: _id, type, ...eventData } = eventToEdit;
       setEventType(type);
       setFormData(eventData);
+      setWarmup(eventToEdit.warmup || []);
       setMainExercises(eventToEdit.mainExercises || []);
+      setCooldown(eventToEdit.cooldown || []);
       if(type === 'matchResult') {
         setScorers(eventToEdit.scorers || []);
         setAssists(eventToEdit.assists || []);
@@ -974,9 +979,36 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
         setSelectedPlayerIds(players.map(p => p.id));
         setScorers([]);
         setAssists([]);
+        setWarmup([]);
         setMainExercises([]);
+        setCooldown([]);
     }
+    setAiPrompt('');
+    setIsGenerating(false);
+    setAiError('');
   }, [eventToEdit, isEditMode, selectedDate, players]);
+
+  const handleGeneratePlan = async () => {
+    if (!aiPrompt) return;
+    setIsGenerating(true);
+    setAiError('');
+    try {
+        const plan = await generateTrainingPlan(aiPrompt);
+        if (plan) {
+            setFormData(prev => ({ ...prev, title: plan.title || prev.title }));
+            if (plan.warmup) setWarmup(plan.warmup);
+            if (plan.mainExercises) setMainExercises(plan.mainExercises);
+            if (plan.cooldown) setCooldown(plan.cooldown);
+        } else {
+            setAiError("La IA no pudo generar un plan. Inténtalo de nuevo con un prompt diferente.");
+        }
+    } catch (error) {
+        console.error("Error generating training plan:", error);
+        setAiError("Ocurrió un error al contactar con la IA.");
+    } finally {
+        setIsGenerating(false);
+    }
+  };
   
   const handlePlayerIdToggle = (playerId: string) => {
     setSelectedPlayerIds(prev =>
@@ -1061,7 +1093,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
         break;
     }
     
-    const eventData: Omit<CalendarEvent, 'id'> = { ...finalFormData, date, type: eventType, title: title || 'Evento sin título', scorers, assists, playerIds: selectedPlayerIds, mainExercises };
+    const eventData: Omit<CalendarEvent, 'id'> = { ...finalFormData, date, type: eventType, title: title || 'Evento sin título', scorers, assists, playerIds: selectedPlayerIds, warmup, mainExercises, cooldown };
     
     if (isEditMode && eventToEdit) {
       onUpdateEvent({ ...eventToEdit, ...eventData });
@@ -1090,7 +1122,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-        <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+        <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
             <form onSubmit={handleSubmit} className="p-6">
                 <h3 className="text-lg font-bold text-white mb-4">
                     {isEditMode ? 'Editar Evento' : `Añadir Evento para ${selectedDate.toLocaleDateString('es-ES', {day: 'numeric', month: 'long'})}`}
@@ -1113,9 +1145,57 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
                                 <label htmlFor="title" className={labelStyle}>Título del Entrenamiento</label>
                                 <input type="text" name="title" value={formData.title || ''} onChange={handleChange} className={inputStyle} required placeholder="Ej: Táctica defensiva"/>
                             </div>
+                            
+                            <div className="p-3 my-2 border border-dashed border-purple-400/50 rounded-lg bg-gray-800/20">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <SparklesIcon className="w-5 h-5 text-purple-400" />
+                                    <h4 className="text-sm font-semibold text-purple-300">Generar plan con IA</h4>
+                                </div>
+                                <textarea
+                                    placeholder="Describe el enfoque, ej: 'defensa de alta presión y transiciones rápidas'"
+                                    className={inputStyle + " text-xs"}
+                                    rows={2}
+                                    value={aiPrompt}
+                                    onChange={(e) => setAiPrompt(e.target.value)}
+                                    disabled={isGenerating}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleGeneratePlan}
+                                    disabled={isGenerating || !aiPrompt}
+                                    className="w-full mt-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-semibold py-1.5 px-3 rounded-md transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {isGenerating ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Generando...
+                                        </>
+                                    ) : 'Generar Plan'}
+                                </button>
+                                {aiError && <p className="text-xs text-red-400 mt-2 text-center">{aiError}</p>}
+                            </div>
+
+                            <div>
+                                <label className={labelStyle}>Calentamiento</label>
+                                <div className="space-y-2 p-3 bg-gray-900/50 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
+                                    {warmup.map((ex, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                            <div className="text-sm">
+                                                <p className="font-semibold text-white">{ex.name}</p>
+                                                <p className="text-xs text-gray-400">{ex.description} - {ex.duration}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {warmup.length === 0 && <p className="text-xs text-gray-500 text-center">No se han añadido ejercicios de calentamiento.</p>}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className={labelStyle}>Ejercicios Principales</label>
-                                <div className="space-y-2 p-3 bg-gray-900/50 border border-gray-600 rounded-md">
+                                <div className="space-y-2 p-3 bg-gray-900/50 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
                                     {mainExercises.map((ex, index) => (
                                         <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
                                             <div className="text-sm">
@@ -1138,6 +1218,22 @@ const AddEventModal: React.FC<AddEventModalProps> = ({ onClose, onAddEvent, onUp
                                     <button type="button" onClick={handleAddExercise} className="w-full text-xs bg-cyan-700 hover:bg-cyan-600 text-white font-semibold py-1.5 px-3 rounded-md transition-colors">Añadir Ejercicio</button>
                                 </div>
                             </div>
+
+                            <div>
+                                <label className={labelStyle}>Enfriamiento</label>
+                                <div className="space-y-2 p-3 bg-gray-900/50 border border-gray-600 rounded-md max-h-40 overflow-y-auto">
+                                    {cooldown.map((ex, index) => (
+                                        <div key={index} className="flex items-center justify-between bg-gray-700 p-2 rounded">
+                                            <div className="text-sm">
+                                                <p className="font-semibold text-white">{ex.name}</p>
+                                                <p className="text-xs text-gray-400">{ex.description} - {ex.duration}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {cooldown.length === 0 && <p className="text-xs text-gray-500 text-center">No se han añadido ejercicios de enfriamiento.</p>}
+                                </div>
+                            </div>
+
                             <div>
                                 <label className={labelStyle}>Jugadores Asignados</label>
                                 <div className="max-h-32 overflow-y-auto space-y-1 p-2 bg-gray-800/50 border border-gray-600 rounded-md">

@@ -1,5 +1,8 @@
+
 export interface Player {
   id: string;
+  authUid?: string; // UID from Firebase Auth
+  password?: string;
   name: string;
   lastName: string;
   nickname: string;
@@ -9,7 +12,6 @@ export interface Player {
   photoUrl: string;
   previousClub: string;
   observations: string;
-  password?: string; // Added for player login
   documents?: {
     dniFrontUrl?: string;
     dniBackUrl?: string;
@@ -116,7 +118,9 @@ export interface CalendarEvent {
 
   // Fields for 'training'
   trainingSessionId?: string; // Optional: can link back to a full TrainingSession
+  warmup?: Exercise[];
   mainExercises?: Exercise[];
+  cooldown?: Exercise[];
 
   // Fields for 'matchResult'
   result?: string;
