@@ -1,7 +1,6 @@
 
 import { db, storage, auth } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
-import { mockPlayers, mockEvaluations, mockCalendarEvents } from './data/mockData';
 
 // Helper to upload a file to Firebase Storage and get URL
 const uploadFile = async (file: File, path: string): Promise<string> => {
@@ -69,63 +68,7 @@ export const seedDatabase = async () => {
         }
     }
 
-    // Seed Firestore data
-    const playersCol = db.collection("players");
-    const playerSnapshot = await playersCol.limit(1).get();
-    if (playerSnapshot.empty) {
-        console.log("Database is empty. Seeding Firestore data...");
-        const batch = db.batch();
-
-        const playerMappings: Record<string, string> = {};
-
-        // Seed players without auth accounts
-        mockPlayers.forEach(player => {
-            const docRef = db.collection("players").doc();
-            playerMappings[player.id] = docRef.id;
-            const { id, ...playerData } = player;
-            batch.set(docRef, playerData);
-        });
-
-        // Seed evaluations and events with mappings
-        mockEvaluations.forEach(evaluation => {
-            const newPlayerId = playerMappings[evaluation.playerId];
-            if (newPlayerId) {
-                const docRef = db.collection("evaluations").doc();
-                batch.set(docRef, { ...evaluation, id: docRef.id, playerId: newPlayerId });
-            }
-        });
-
-        mockCalendarEvents.forEach(event => {
-            const docRef = db.collection("calendarEvents").doc();
-            const eventData = JSON.parse(JSON.stringify(event));
-            
-            if (eventData.playerId && playerMappings[eventData.playerId]) {
-                eventData.playerId = playerMappings[eventData.playerId];
-            }
-            if (eventData.playerIds) {
-                eventData.playerIds = eventData.playerIds.map((pid: string) => playerMappings[pid] || pid);
-            }
-            if (eventData.squad) {
-                if (eventData.squad.calledUp) {
-                    eventData.squad.calledUp = eventData.squad.calledUp.map((pid: string) => playerMappings[pid] || pid);
-                }
-                if (eventData.squad.notCalledUp) {
-                    eventData.squad.notCalledUp = eventData.squad.notCalledUp.map((pid: string) => playerMappings[pid] || pid);
-                }
-            }
-             if (eventData.scorers) {
-                eventData.scorers = eventData.scorers.map((pid: string) => playerMappings[pid] || pid);
-            }
-            if (eventData.assists) {
-                eventData.assists = eventData.assists.map((pid: string) => playerMappings[pid] || pid);
-            }
-
-            batch.set(docRef, eventData);
-        });
-
-        await batch.commit();
-        console.log("Firestore Database seeded successfully!");
-    }
+    // Data seeding from mockData has been removed to start with a clean state.
 };
 
 
