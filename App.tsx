@@ -117,9 +117,9 @@ const App: React.FC = () => {
     try {
         const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
         
-        // This runs ONLY if addPlayer was successful
-        await auth.signOut(); // Sign out the newly created user.
-        alert('¡Jugador registrado con éxito! El entrenador o administrador debe volver a iniciar sesión para continuar.');
+        // With the new auth flow, the coach is NOT logged out. The new user is created
+        // in a secondary auth instance. So, we no longer need to sign anyone out here.
+        alert('¡Jugador registrado con éxito! Ahora puede iniciar sesión.');
         
         setPlayers(prev => [...prev, newPlayer]); 
         setCurrentView('login');

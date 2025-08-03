@@ -1,9 +1,11 @@
 
-import { db, storage, auth } from './firebaseConfig';
+
+import { db, storage, auth, secondaryAuth } from './firebaseConfig';
 import type { Player, PlayerEvaluation, CalendarEvent } from './types';
 
 // Helper to upload a file to Firebase Storage and get URL
 const uploadFile = async (file: File, path: string): Promise<string> => {
+    // Operations are done by the primary user (coach) who is logged in.
     const storageRef = storage.ref(path);
     const snapshot = await storageRef.put(file);
     return await snapshot.ref.getDownloadURL();
@@ -13,7 +15,7 @@ const uploadFile = async (file: File, path: string): Promise<string> => {
 export const getUserRole = async (uid: string): Promise<{role: string, playerId?: string} | null> => {
     const userDoc = await db.collection('users').doc(uid).get();
     if (userDoc.exists) {
-        return userDoc.data() as {role: string, playerId?: string};
+        return userDoc.data() as {role:string, playerId?: string};
     }
     return null;
 }
@@ -27,13 +29,13 @@ export const seedDatabase = async () => {
     if (!flagDoc.exists || !flagDoc.data()?.authSeeded) {
         console.log("Seeding auth users...");
         try {
-            const originalUser = auth.currentUser; // Store original user if any
+            // Use secondaryAuth to prevent logging out any active user.
             
             // Create Coach User
             try {
-                await auth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
-                if (auth.currentUser) {
-                    await db.collection('users').doc(auth.currentUser.uid).set({ role: 'coach' });
+                const coachCred = await secondaryAuth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
+                if (coachCred.user) {
+                    await db.collection('users').doc(coachCred.user.uid).set({ role: 'coach' });
                 }
             } catch (error: unknown) {
                 const code = (error as {code?: string}).code;
@@ -42,9 +44,9 @@ export const seedDatabase = async () => {
 
             // Create Club User
             try {
-                await auth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
-                if (auth.currentUser) {
-                    await db.collection('users').doc(auth.currentUser.uid).set({ role: 'club' });
+                const clubCred = await secondaryAuth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
+                if (clubCred.user) {
+                    await db.collection('users').doc(clubCred.user.uid).set({ role: 'club' });
                 }
             } catch (error: unknown) {
                 const code = (error as {code?: string}).code;
@@ -54,17 +56,15 @@ export const seedDatabase = async () => {
             await flagRef.set({ authSeeded: true }, { merge: true });
             console.log("Auth users seeded.");
             
-            // Sign out the last created user and restore the original session if there was one.
-            await auth.signOut();
-            if (originalUser) {
-                // This is a simplified re-login. A more robust solution might use custom tokens from a backend.
-                // For this app, we assume the user will just log back in normally.
+            // Sign out any user from the secondary instance.
+            if (secondaryAuth.currentUser) {
+                await secondaryAuth.signOut();
             }
 
         } catch(error: unknown) {
             console.error("Error during auth seeding:", error);
              // Ensure we are signed out on error
-            if (auth.currentUser) await auth.signOut();
+            if (secondaryAuth.currentUser) await secondaryAuth.signOut();
         }
     }
 
@@ -83,30 +83,43 @@ export const getPlayers = async (): Promise<Player[]> => {
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player> => {
     let userCredential;
     try {
-        // 1. Create user in Auth. This logs in the new user automatically.
-        userCredential = await auth.createUserWithEmailAndPassword(playerData.email, playerData.password);
+        // 1. Create user in the secondary auth instance to avoid logging out the admin.
+        userCredential = await secondaryAuth.createUserWithEmailAndPassword(playerData.email, playerData.password);
         const uid = userCredential.user?.uid;
         if (!uid) {
             throw new Error("Firebase Auth user creation failed, no UID returned.");
         }
         
-        // 2. Prepare player document and upload files
+        // 2. Prepare player document and upload files in parallel.
         const playerDocRef = db.collection("players").doc();
         const newPlayerId = playerDocRef.id;
 
         let photoUrl = `https://picsum.photos/seed/${newPlayerId}/200/200`;
         const documents: { dniFrontUrl?: string; dniBackUrl?: string; idPhotoUrl?: string; } = {};
         
+        const uploadPromises = [];
         if (idPhotoFile) {
-            photoUrl = await uploadFile(idPhotoFile, `players/${newPlayerId}/idPhoto.jpg`);
-            documents.idPhotoUrl = photoUrl;
+            uploadPromises.push(uploadFile(idPhotoFile, `players/${newPlayerId}/idPhoto.jpg`).then(url => ({ type: 'idPhoto', url })));
         }
         if (dniFrontFile) {
-            documents.dniFrontUrl = await uploadFile(dniFrontFile, `players/${newPlayerId}/dniFront.jpg`);
+            uploadPromises.push(uploadFile(dniFrontFile, `players/${newPlayerId}/dniFront.jpg`).then(url => ({ type: 'dniFront', url })));
         }
         if (dniBackFile) {
-            documents.dniBackUrl = await uploadFile(dniBackFile, `players/${newPlayerId}/dniBack.jpg`);
+            uploadPromises.push(uploadFile(dniBackFile, `players/${newPlayerId}/dniBack.jpg`).then(url => ({ type: 'dniBack', url })));
         }
+        
+        const uploadResults = await Promise.all(uploadPromises);
+        
+        uploadResults.forEach(result => {
+            if (result.type === 'idPhoto') {
+                photoUrl = result.url;
+                documents.idPhotoUrl = result.url;
+            } else if (result.type === 'dniFront') {
+                documents.dniFrontUrl = result.url;
+            } else if (result.type === 'dniBack') {
+                documents.dniBackUrl = result.url;
+            }
+        });
 
         const playerToAdd: Omit<Player, 'id'> = {
             authUid: uid,
@@ -141,26 +154,35 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        // 3. Save player and user role data to Firestore
+        // 3. Save player and user role data to Firestore using the coach's permissions.
         const userDocRef = db.collection('users').doc(uid);
         const batch = db.batch();
         batch.set(playerDocRef, playerToAdd);
         batch.set(userDocRef, { role: 'player', playerId: newPlayerId });
         await batch.commit();
 
+        // 4. Clean up: sign out the new user from the secondary auth instance.
+        if (secondaryAuth.currentUser) {
+            await secondaryAuth.signOut();
+        }
 
-        // 4. Return the complete new player object. The caller will handle auth state.
+        // 5. Return the complete new player object.
         return { id: newPlayerId, ...playerToAdd };
     } catch (error: any) {
-        // If user was created in Auth but something else failed (e.g., Firestore write),
-        // delete the user to prevent an inconsistent state (orphaned auth user).
+        // If user was created in Auth but something else failed, delete the auth user.
         if (userCredential && userCredential.user) {
             try {
+                // To delete, we need to be signed in as that user in the secondary instance.
+                // The user is already signed in after creation.
                 await userCredential.user.delete();
                 console.log("Successfully deleted partially created auth user.");
             } catch (deleteError) {
                 console.error("Critical: Failed to delete partially created auth user. Manual cleanup may be required.", deleteError);
             }
+        }
+        // Always sign out from secondary auth on failure.
+        if (secondaryAuth.currentUser) {
+            await secondaryAuth.signOut();
         }
         console.error("Error during player addition transaction:", error);
         // Re-throw the original error so the UI can display a specific message
@@ -176,16 +198,29 @@ export const updatePlayer = async (player: Player, idPhotoFile: File | null, dni
         let photoUrl = player.photoUrl;
         const documents = { ...(player.documents || {}) };
 
+        const uploadPromises = [];
         if (idPhotoFile) {
-            photoUrl = await uploadFile(idPhotoFile, `players/${player.id}/idPhoto.jpg`);
-            documents.idPhotoUrl = photoUrl;
+            uploadPromises.push(uploadFile(idPhotoFile, `players/${player.id}/idPhoto.jpg`).then(url => ({ type: 'idPhoto', url })));
         }
         if (dniFrontFile) {
-            documents.dniFrontUrl = await uploadFile(dniFrontFile, `players/${player.id}/dniFront.jpg`);
+            uploadPromises.push(uploadFile(dniFrontFile, `players/${player.id}/dniFront.jpg`).then(url => ({ type: 'dniFront', url })));
         }
         if (dniBackFile) {
-            documents.dniBackUrl = await uploadFile(dniBackFile, `players/${player.id}/dniBack.jpg`);
+            uploadPromises.push(uploadFile(dniBackFile, `players/${player.id}/dniBack.jpg`).then(url => ({ type: 'dniBack', url })));
         }
+
+        const uploadResults = await Promise.all(uploadPromises);
+        
+        uploadResults.forEach(result => {
+            if (result.type === 'idPhoto') {
+                photoUrl = result.url;
+                documents.idPhotoUrl = result.url;
+            } else if (result.type === 'dniFront') {
+                documents.dniFrontUrl = result.url;
+            } else if (result.type === 'dniBack') {
+                documents.dniBackUrl = result.url;
+            }
+        });
         
         const updatedData = { ...player, photoUrl, documents };
         const { id, ...dataToSave } = updatedData;

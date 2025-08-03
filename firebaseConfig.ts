@@ -14,10 +14,20 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+// Primary app instance for main app logic
+if (firebase.apps.every(app => app?.name !== 'PRIMARY')) {
+  firebase.initializeApp(firebaseConfig, 'PRIMARY');
 }
 
-export const db = firebase.firestore();
-export const storage = firebase.storage();
-export const auth = firebase.auth();
+// Secondary app instance specifically for user creation to avoid session conflicts
+if (firebase.apps.every(app => app?.name !== 'SECONDARY')) {
+  firebase.initializeApp(firebaseConfig, 'SECONDARY');
+}
+
+const primaryApp = firebase.app('PRIMARY');
+const secondaryApp = firebase.app('SECONDARY');
+
+export const db = primaryApp.firestore();
+export const storage = primaryApp.storage();
+export const auth = primaryApp.auth();
+export const secondaryAuth = secondaryApp.auth();
