@@ -121,15 +121,18 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        
         if (!isEditMode && (!formData.password || formData.password.length < 6)) {
-             setSubmitError("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
-             return;
+            setSubmitError("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
+            return;
         }
 
         setIsSubmitting(true);
         setSubmitError(null);
-        
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("La operación está tardando demasiado. Por favor, revisa tus reglas de seguridad de Firebase Storage para permitir escrituras.")), 30000)
+        );
+
         const dataToSave = {
             ...formData,
             jerseyNumber: parseInt(formData.jerseyNumber, 10) || 0,
@@ -139,27 +142,31 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         }
 
         try {
-            await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
-            // On success, the parent component (App or CoachDashboard) will handle closing/navigation.
+            await Promise.race([
+                onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile),
+                timeoutPromise
+            ]);
+            // On success, parent component closes modal.
         } catch (error: any) {
             console.error("Registration/Update failed in form:", error);
-            let message = "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.";
-            if (error && typeof error.code === 'string') {
+            let message = "Ha ocurrido un error inesperado.";
+
+            if (error?.code) {
                 switch (error.code) {
                     case 'auth/email-already-in-use':
-                        message = 'Este correo electrónico ya está registrado. Por favor, utiliza otro.';
+                        message = 'Este correo electrónico ya está registrado.';
                         break;
                     case 'auth/invalid-email':
                         message = 'El formato del correo electrónico no es válido.';
                         break;
                     case 'auth/weak-password':
-                        message = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
+                        message = 'La contraseña es demasiado débil (mín. 6 caracteres).';
                         break;
-                    case 'auth/network-request-failed':
-                         message = 'Error de red. Comprueba tu conexión a internet e inténtalo de nuevo.';
-                         break;
+                    case 'storage/unauthorized':
+                        message = "Error de permisos en Storage. Revisa tus reglas de seguridad.";
+                        break;
                     default:
-                        message = `Error de autenticación: ${error.message}`;
+                        message = error.message;
                 }
             } else if (error instanceof Error) {
                 message = error.message;
@@ -169,6 +176,7 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
             setIsSubmitting(false);
         }
     };
+
 
     return (
         <Card className="w-full max-w-4xl flex flex-col max-h-[90vh] overflow-hidden">
