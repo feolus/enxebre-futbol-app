@@ -50,9 +50,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Seed the database on first load if necessary
-    firebaseServices.seedDatabase();
-
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setIsLoading(true);
       setAuthError('');
@@ -62,7 +59,7 @@ const App: React.FC = () => {
           await loadAppData(roleInfo);
         } else {
           // This can happen if a user is created in Auth but their role document fails to write.
-          setAuthError('No se pudo encontrar el rol del usuario.');
+          setAuthError('No se pudo encontrar el rol del usuario. Contacta al administrador.');
           await auth.signOut();
         }
       } else {

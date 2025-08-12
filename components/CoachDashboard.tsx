@@ -401,8 +401,10 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
         await props.onAddPlayer(playerData, idPhotoFile, dniFrontFile, dniBackFile);
         setIsRegisterModalOpen(false); // Close modal on success
     } catch (error) {
-        // Error is displayed by the form, so we just log it and leave the modal open.
+        // Error is now re-thrown by parent components, so the form's catch block will handle it.
+        // We re-throw it here so the form can get the specific error message.
         console.error("CoachDashboard caught error during player creation:", error);
+        throw error;
     }
   };
 

@@ -20,58 +20,6 @@ export const getUserRole = async (uid: string): Promise<{role: string, playerId?
     return null;
 }
 
-// --- Seeding Service ---
-export const seedDatabase = async () => {
-    // Seed Auth users (coach and club) only once
-    const flagRef = db.collection('internal').doc('seedingFlags');
-    const flagDoc = await flagRef.get();
-
-    if (!flagDoc.exists || !flagDoc.data()?.authSeeded) {
-        console.log("Seeding auth users...");
-        try {
-            // Use secondaryAuth to prevent logging out any active user.
-            
-            // Create Coach User
-            try {
-                const coachCred = await secondaryAuth.createUserWithEmailAndPassword('coach@enxebre.com', 'coach123');
-                if (coachCred.user) {
-                    await db.collection('users').doc(coachCred.user.uid).set({ role: 'coach' });
-                }
-            } catch (error: unknown) {
-                const code = (error as {code?: string}).code;
-                if (code !== 'auth/email-already-in-use') console.error("Error creating coach:", error);
-            }
-
-            // Create Club User
-            try {
-                const clubCred = await secondaryAuth.createUserWithEmailAndPassword('club@enxebre.com', 'club1234');
-                if (clubCred.user) {
-                    await db.collection('users').doc(clubCred.user.uid).set({ role: 'club' });
-                }
-            } catch (error: unknown) {
-                const code = (error as {code?: string}).code;
-                if (code !== 'auth/email-already-in-use') console.error("Error creating club:", error);
-            }
-            
-            await flagRef.set({ authSeeded: true }, { merge: true });
-            console.log("Auth users seeded.");
-            
-            // Sign out any user from the secondary instance.
-            if (secondaryAuth.currentUser) {
-                await secondaryAuth.signOut();
-            }
-
-        } catch(error: unknown) {
-            console.error("Error during auth seeding:", error);
-             // Ensure we are signed out on error
-            if (secondaryAuth.currentUser) await secondaryAuth.signOut();
-        }
-    }
-
-    // Data seeding from mockData has been removed to start with a clean state.
-};
-
-
 // --- Player Services ---
 
 export const getPlayers = async (): Promise<Player[]> => {
