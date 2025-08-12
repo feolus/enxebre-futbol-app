@@ -11,7 +11,7 @@ import * as firebaseServices from './firebaseServices';
 import { auth } from './firebaseConfig';
 
 type UserRole = 'coach' | 'club' | 'player';
-type View = 'login' | 'register' | 'dashboard';
+type View = 'login' | 'dashboard';
 
 const App: React.FC = () => {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -19,7 +19,6 @@ const App: React.FC = () => {
   const [loggedInPlayer, setLoggedInPlayer] = useState<Player | null>(null);
   const [authError, setAuthError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const [players, setPlayers] = useState<Player[]>([]);
   const [evaluations, setEvaluations] = useState<PlayerEvaluation[]>([]);
@@ -56,8 +55,6 @@ const App: React.FC = () => {
     firebaseServices.seedDatabase();
 
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (isRegistering) return; // Ignore auth changes during registration process
-
       setIsLoading(true);
       setAuthError('');
       if (user) {
@@ -82,7 +79,7 @@ const App: React.FC = () => {
     });
 
     return () => unsubscribe();
-  }, [loadAppData, isRegistering]);
+  }, [loadAppData]);
 
 
   const handleLogin = async (email: string, password?: string) => {
@@ -113,23 +110,17 @@ const App: React.FC = () => {
   };
 
   const handleAddPlayer = async (newPlayerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<void> => {
-    setIsRegistering(true);
     try {
         const newPlayer = await firebaseServices.addPlayer(newPlayerData, idPhotoFile, dniFrontFile, dniBackFile);
         
-        // With the new auth flow, the coach is NOT logged out. The new user is created
-        // in a secondary auth instance. So, we no longer need to sign anyone out here.
-        alert('¡Jugador registrado con éxito! Ahora puede iniciar sesión.');
+        alert('¡Jugador registrado con éxito!');
         
         setPlayers(prev => [...prev, newPlayer]); 
-        setCurrentView('login');
     } catch(error) {
         console.error("Failed to add player from App.tsx:", error);
         // The service layer now handles auth user cleanup on failure.
         // We just re-throw the error so the form can display a specific message.
         throw error;
-    } finally {
-        setIsRegistering(false);
     }
   };
 
@@ -188,10 +179,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleSwitchToRegister = () => {
-      setCurrentView('register');
-  }
-
   const upcomingMatchEvent = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -205,13 +192,9 @@ const App: React.FC = () => {
     if (isLoading) {
       return <div className="text-center p-10 text-lg font-semibold text-gray-400">Cargando...</div>;
     }
-
-    if (currentView === 'register') {
-      return <PlayerRegistrationForm onSave={handleAddPlayer} onClose={() => setCurrentView('login')} />;
-    }
-
+    
     if (currentView === 'login' || !userRole) {
-      return <LoginScreen onLogin={handleLogin} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
+      return <LoginScreen onLogin={handleLogin} error={authError} />;
     }
 
     switch (userRole) {
@@ -223,6 +206,7 @@ const App: React.FC = () => {
                   onAddEvent={handleAddEvent}
                   onUpdateEvent={handleUpdateEvent}
                   onDeleteEvent={handleDeleteEvent}
+                  onAddPlayer={handleAddPlayer}
                   onUpdatePlayer={handleUpdatePlayer}
                   onDeletePlayer={handleDeletePlayer}
                   onAddEvaluation={handleAddEvaluation}
@@ -239,12 +223,11 @@ const App: React.FC = () => {
                   calendarEvents={calendarEvents}
                />;
       default:
-        return <LoginScreen onLogin={handleLogin} error={authError} onSwitchToRegister={handleSwitchToRegister} />;
+        return <LoginScreen onLogin={handleLogin} error={authError} />;
     }
   };
   
   const getHeaderTitle = () => {
-      if (currentView === 'register') return 'Registro de Nuevo Jugador';
       switch(userRole) {
           case 'coach': return 'Panel del Entrenador';
           case 'club': return 'Panel del Club';

@@ -269,6 +269,7 @@ interface CoachDashboardProps {
   onAddEvent: (event: Omit<CalendarEvent, 'id'>) => void;
   onUpdateEvent: (event: CalendarEvent) => void;
   onDeleteEvent: (eventId: string) => void;
+  onAddPlayer: (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<void>;
   onUpdatePlayer: (player: Player, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => Promise<void>;
   onDeletePlayer: (playerId: string) => void;
   onAddEvaluation: (evaluation: Omit<PlayerEvaluation, 'id'>) => void;
@@ -279,6 +280,7 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
   const [view, setView] = useState<View>('list');
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [isEvalModalOpen, setIsEvalModalOpen] = useState(false);
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   const upcomingMatch = useMemo(() => {
     const today = new Date();
@@ -394,6 +396,17 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
       setIsEvalModalOpen(false);
   };
 
+  const handleSaveNewPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null) => {
+    try {
+        await props.onAddPlayer(playerData, idPhotoFile, dniFrontFile, dniBackFile);
+        setIsRegisterModalOpen(false); // Close modal on success
+    } catch (error) {
+        // Error is displayed by the form, so we just log it and leave the modal open.
+        console.error("CoachDashboard caught error during player creation:", error);
+    }
+  };
+
+
   const renderContent = () => {
     if (activeTab === 'club') {
         switch (view) {
@@ -420,7 +433,14 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
                 return <PlayerRegistrationForm playerToEdit={selectedPlayer} onSave={handleSavePlayerUpdate} onClose={handleCloseSubView} />;
             case 'list':
             default:
-                return <ClubView players={props.players} calendarEvents={props.calendarEvents} onSelectPlayer={handleSelectPlayer} onEditPlayer={handleEditPlayer} onDeletePlayer={handleDeleteClick}/>;
+                return <ClubView 
+                            players={props.players} 
+                            calendarEvents={props.calendarEvents} 
+                            onSelectPlayer={handleSelectPlayer} 
+                            onEditPlayer={handleEditPlayer} 
+                            onDeletePlayer={handleDeleteClick}
+                            onOpenRegister={() => setIsRegisterModalOpen(true)}
+                        />;
         }
     }
 
@@ -445,7 +465,14 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
       case 'statistics':
         return <StatisticsView events={props.calendarEvents} players={props.players} />;
       default:
-        return <ClubView players={props.players} calendarEvents={props.calendarEvents} onSelectPlayer={handleSelectPlayer} onEditPlayer={handleEditPlayer} onDeletePlayer={handleDeleteClick}/>;
+        return <ClubView 
+                    players={props.players} 
+                    calendarEvents={props.calendarEvents} 
+                    onSelectPlayer={handleSelectPlayer} 
+                    onEditPlayer={handleEditPlayer} 
+                    onDeletePlayer={handleDeleteClick}
+                    onOpenRegister={() => setIsRegisterModalOpen(true)}
+                />;
     }
   };
 
@@ -455,6 +482,14 @@ const CoachDashboard: React.FC<CoachDashboardProps> = (props) => {
       <div className="flex-1">
         {renderContent()}
       </div>
+       {isRegisterModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <PlayerRegistrationForm 
+                onClose={() => setIsRegisterModalOpen(false)} 
+                onSave={handleSaveNewPlayer} 
+            />
+        </div>
+      )}
     </div>
   );
 };
@@ -499,9 +534,10 @@ interface ClubViewProps {
     onSelectPlayer: (player: Player) => void;
     onEditPlayer: (player: Player) => void;
     onDeletePlayer: (playerId: string) => void;
+    onOpenRegister: () => void;
 }
 
-const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPlayer, onEditPlayer, onDeletePlayer }) => {
+const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPlayer, onEditPlayer, onDeletePlayer, onOpenRegister }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const playerStats = useMemo(() => {
@@ -559,11 +595,18 @@ const ClubView: React.FC<ClubViewProps> = ({ players, calendarEvents, onSelectPl
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
             <h2 className="text-3xl font-bold text-white">Equipo</h2>
             <p className="text-gray-400 mt-1">Gestiona los miembros de tu equipo</p>
         </div>
+         <button 
+            onClick={onOpenRegister}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-colors shadow-md w-full md:w-auto justify-center"
+         >
+            <PlusCircleIcon className="w-5 h-5" />
+            <span>Registrar Jugador</span>
+        </button>
       </div>
 
       <div className="mb-6 relative">

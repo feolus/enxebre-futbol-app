@@ -1,13 +1,13 @@
+
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import Card from './Card';
 
 interface LoginScreenProps {
   onLogin: (email: string, password?: string) => void;
   error: string;
-  onSwitchToRegister: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error, onSwitchToRegister }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -63,14 +63,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, error, onSwitchToReg
             </button>
           </div>
         </form>
-
-        <p className="text-center text-sm text-gray-400 mt-6">
-            ¿Eres un nuevo jugador?{' '}
-            <button onClick={onSwitchToRegister} className="font-medium text-cyan-400 hover:text-cyan-300 underline">
-                Regístrate aquí
-            </button>
-        </p>
-
       </Card>
     </div>
   );
