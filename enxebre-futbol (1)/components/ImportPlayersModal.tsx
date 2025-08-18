@@ -7,24 +7,22 @@ interface ImportPlayersModalProps {
   onImport: (newPlayersData: Partial<Player>[]) => Promise<void>;
 }
 
-const requiredHeaders = ['name', 'lastName', 'email', 'jerseyNumber', 'position'];
 const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1L1wc40T70_MH1VSptiT5aCBQl3meTW4GTY4Yl1Gv1Jc/edit?usp=sharing';
-
 
 const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImport }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Analizador de CSV robusto que maneja comas entre comillas
+  // Robust CSV parser that handles quoted fields with commas
   const parseCSV = (csvText: string): Record<string, string>[] => {
     const lines = csvText.trim().split(/\r\n|\n/);
     if (lines.length < 2) {
       throw new Error("El archivo CSV está vacío o solo contiene la cabecera.");
     }
-    const headers = lines[0].split(',').map(h => h.trim());
+    // Headers are parsed from the first line of the CSV
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     
     const result: Record<string, string>[] = [];
-    // Regex para manejar campos entre comillas, incluyendo comas y comillas dobles escapadas dentro de ellos.
     const regex = /("((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
 
     for (let i = 1; i < lines.length; i++) {
@@ -33,13 +31,11 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
         let headerIndex = 0;
         let line = lines[i];
 
-        if (!line.trim()) continue; // Omitir líneas vacías
+        if (!line.trim()) continue; // Skip empty lines
 
         regex.lastIndex = 0;
         
         while ((match = regex.exec(line)) !== null && headerIndex < headers.length) {
-            // match[2] es el contenido de un campo entrecomillado (eliminamos las comillas dobles escapadas)
-            // match[3] es el contenido de un campo no entrecomillado
             let value = match[2] !== undefined ? match[2].replace(/""/g, '"') : (match[3] || '');
             row[headers[headerIndex]] = value.trim();
             headerIndex++;
@@ -58,6 +54,55 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
     setIsLoading(true);
     setError(null);
 
+    // Header names from the Google Sheet
+    const columnMapping = {
+        fullName: 'Nombre y apellidos del jugador',
+        birthDate: 'Fecha de nacimiento',
+        phone: 'N.º de teléfono del jugador',
+        idNumber: 'N.º D.N.I. del Jugador',
+        previousClub: 'Club en el que milito la temporada pasada',
+        position: 'POSICION EN LA QUE JUGO LA TEMPORADA PASADA',
+        jerseyNumber: 'N.º DE DORSAL QUE LE GUSTARIA LLEVAR EN LA CAMISETA',
+        nickname: 'NOMBRE O NICK PARA LA CAMISETA',
+        email: 'CORREO ELECTRONICO DEL JUGADOR',
+        motherNamePhone: 'NOMBRE DE LA MADRE Y N.º DE TELEFONO',
+        fatherNamePhone: 'NOMBRE DEL PADRE Y N.º DE TELEFONO',
+        parentEmail: 'CORREO ELECTRONICO DE UNO DE LOS TUTORES/PADRES PARA LA FIRMA DE LA FICHA SI FUERA NECESARIO',
+        treatments: 'ENFERMEDADES, ALERGIAS O TRATAMIENTOS DEL JUGADOR',
+        observations: 'Observaciones: cualquier información que nos queráis hacer llegar los padres a los entrenadores: ej. un día llega mas tarde al entrenamiento por que tiene clases...',
+    };
+    
+    const requiredHeadersFromSheet = [
+        columnMapping.fullName,
+        columnMapping.email,
+        columnMapping.jerseyNumber,
+        columnMapping.position
+    ];
+
+    const calculateAge = (birthDateString: string | undefined): number => {
+        if (!birthDateString) return 0;
+        // Example format from sheet: 13/05/2011
+        const parts = birthDateString.split('/');
+        if (parts.length !== 3) return 0;
+
+        let year = parseInt(parts[2], 10);
+        if (year < 100) { // Handles cases like '11' instead of '2011'
+            year += 2000;
+        }
+        
+        const birthDate = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+        if (isNaN(birthDate.getTime())) return 0; // Invalid date
+
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age > 0 ? age : 0;
+    };
+
+
     try {
       const sheetIdMatch = SPREADSHEET_URL.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
       if (!sheetIdMatch) {
@@ -75,47 +120,56 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
 
       if (parsedData.length > 0) {
         const headers = Object.keys(parsedData[0]);
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        const missingHeaders = requiredHeadersFromSheet.filter(h => !headers.includes(h));
         if (missingHeaders.length > 0) {
-          throw new Error(`Faltan las siguientes columnas obligatorias: ${missingHeaders.join(', ')}`);
+          throw new Error(`Faltan las siguientes columnas obligatorias en la hoja de cálculo: ${missingHeaders.join(', ')}`);
         }
+      } else {
+         throw new Error("No se encontraron datos de jugadores en la hoja de cálculo.");
       }
 
-      const players: Partial<Player>[] = parsedData.map(playerObject => ({
-        name: playerObject.name,
-        lastName: playerObject.lastName,
-        nickname: playerObject.nickname,
-        idNumber: playerObject.idNumber,
-        jerseyNumber: parseInt(playerObject.jerseyNumber, 10) || 0,
-        position: playerObject.position,
-        previousClub: playerObject.previousClub,
-        observations: playerObject.observations,
-        personalInfo: {
-          age: parseInt(playerObject.age, 10) || 0,
-          height: playerObject.height,
-          weight: playerObject.weight,
-        },
-        medicalInfo: {
-            status: 'Activo',
-            notes: '',
-            treatments: playerObject.treatments
-        },
-        contactInfo: {
-          email: playerObject.email,
-          phone: playerObject.phone,
-        },
-        parentInfo: {
-          fatherNamePhone: playerObject.fatherNamePhone,
-          motherNamePhone: playerObject.motherNamePhone,
-          parentEmail: playerObject.parentEmail,
-        },
-      }));
+      const players: Partial<Player>[] = parsedData.map(row => {
+        const fullName = row[columnMapping.fullName] || '';
+        const nameParts = fullName.trim().split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ');
+
+        return {
+            name: firstName,
+            lastName: lastName,
+            nickname: row[columnMapping.nickname],
+            idNumber: row[columnMapping.idNumber],
+            jerseyNumber: parseInt(row[columnMapping.jerseyNumber], 10) || 0,
+            position: row[columnMapping.position],
+            previousClub: row[columnMapping.previousClub],
+            observations: row[columnMapping.observations],
+            personalInfo: {
+              age: calculateAge(row[columnMapping.birthDate]),
+              height: '', // Not in sheet
+              weight: '', // Not in sheet
+            },
+            medicalInfo: {
+                status: 'Activo' as const,
+                notes: '',
+                treatments: row[columnMapping.treatments]
+            },
+            contactInfo: {
+              email: row[columnMapping.email],
+              phone: row[columnMapping.phone],
+            },
+            parentInfo: {
+              fatherNamePhone: row[columnMapping.fatherNamePhone],
+              motherNamePhone: row[columnMapping.motherNamePhone],
+              parentEmail: row[columnMapping.parentEmail],
+            },
+        };
+      }).filter(p => p.name && p.contactInfo?.email); // Filter out empty or invalid rows
       
       if (players.length > 0) {
         await onImport(players);
         onClose();
       } else {
-        throw new Error("No se encontraron jugadores en el archivo.");
+        throw new Error("No se encontraron jugadores válidos en el archivo. Verifica que las filas tengan nombre y email.");
       }
 
     } catch (err: any) {
