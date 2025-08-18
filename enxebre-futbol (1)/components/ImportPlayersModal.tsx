@@ -9,46 +9,71 @@ interface ImportPlayersModalProps {
 
 const SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1L1wc40T70_MH1VSptiT5aCBQl3meTW4GTY4Yl1Gv1Jc/edit?usp=sharing';
 
-const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImport }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Robust CSV parser that handles quoted fields with commas
-  const parseCSV = (csvText: string): Record<string, string>[] => {
-    const lines = csvText.trim().split(/\r\n|\n/);
+// Robust parser for CSV, TSV, or semicolon-separated values
+const parseDelimitedText = (text: string): Record<string, string>[] => {
+    const lines = text.trim().replace(/\r/g, "").split('\n');
     if (lines.length < 2) {
-      throw new Error("El archivo CSV está vacío o solo contiene la cabecera.");
+      throw new Error("El archivo está vacío o solo contiene la cabecera.");
     }
-    // Headers are parsed from the first line of the CSV
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+    // Detect separator by counting occurrences in the header
+    const headerLine = lines[0];
+    let separator = ',';
+    if (headerLine.split('\t').length > headerLine.split(',').length) separator = '\t';
+    else if (headerLine.split(';').length > headerLine.split(',').length) separator = ';';
+
+    const buildRegex = (sep: string) => {
+      // This regex handles quoted fields, including escaped quotes ("").
+      return new RegExp(`("((?:[^"]|"")*)"|([^${sep}]*))(?:${sep}|$)`, 'g');
+    };
     
+    const regex = buildRegex(separator);
+
+    const parseLine = (line: string): string[] => {
+      const fields: string[] = [];
+      let match;
+      regex.lastIndex = 0;
+      while ((match = regex.exec(line))) {
+        let value = match[2] !== undefined ? match[2].replace(/""/g, '"') : (match[3] || '');
+        fields.push(value.trim());
+        if (regex.lastIndex >= line.length) break;
+      }
+      return fields;
+    };
+
+    const headers = parseLine(lines[0]);
+    if (headers[headers.length-1] === '' && lines[0].endsWith(separator)) {
+        headers.pop();
+    }
+
     const result: Record<string, string>[] = [];
-    const regex = /("((?:[^"]|"")*)"|([^,]*))(?:,|$)/g;
-
     for (let i = 1; i < lines.length; i++) {
-        const row: Record<string, string> = {};
-        let match;
-        let headerIndex = 0;
-        let line = lines[i];
+        const line = lines[i];
+        if (!line.trim()) continue;
 
-        if (!line.trim()) continue; // Skip empty lines
-
-        regex.lastIndex = 0;
-        
-        while ((match = regex.exec(line)) !== null && headerIndex < headers.length) {
-            let value = match[2] !== undefined ? match[2].replace(/""/g, '"') : (match[3] || '');
-            row[headers[headerIndex]] = value.trim();
-            headerIndex++;
-
-            if (regex.lastIndex >= line.length) break;
+        const values = parseLine(line);
+        if (headers.length > values.length) {
+            while(headers.length > values.length) values.push('');
         }
-        
-        if(Object.values(row).some(val => val !== '')) {
+
+        const row: Record<string, string> = {};
+        headers.forEach((header, index) => {
+          if (header) {
+            row[header] = values[index] || '';
+          }
+        });
+
+        if (Object.values(row).some(val => val !== '')) {
             result.push(row);
         }
     }
     return result;
-  }
+}
+
+
+const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImport }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImportClick = async () => {
     setIsLoading(true);
@@ -58,7 +83,7 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
     const columnMapping = {
         fullName: 'Nombre y apellidos del jugador',
         birthDate: 'Fecha de nacimiento',
-        phone: 'N.º de teléfono del jugador',
+        phone: 'N.º de  teléfono del jugador',
         idNumber: 'N.º D.N.I. del Jugador',
         previousClub: 'Club en el que milito la temporada pasada',
         position: 'POSICION EN LA QUE JUGO LA TEMPORADA PASADA',
@@ -75,8 +100,6 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
     const requiredHeadersFromSheet = [
         columnMapping.fullName,
         columnMapping.email,
-        columnMapping.jerseyNumber,
-        columnMapping.position
     ];
 
     const calculateAge = (birthDateString: string | undefined): number => {
@@ -86,12 +109,12 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
         if (parts.length !== 3) return 0;
 
         let year = parseInt(parts[2], 10);
-        if (year < 100) { // Handles cases like '11' instead of '2011'
+        if (year < 100) {
             year += 2000;
         }
         
         const birthDate = new Date(year, parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
-        if (isNaN(birthDate.getTime())) return 0; // Invalid date
+        if (isNaN(birthDate.getTime())) return 0;
 
         const today = new Date();
         let age = today.getFullYear() - birthDate.getFullYear();
@@ -116,7 +139,7 @@ const ImportPlayersModal: React.FC<ImportPlayersModalProps> = ({ onClose, onImpo
         throw new Error("No se pudo acceder a la hoja de cálculo. Asegúrate de que está publicada en la web.");
       }
       const csvText = await response.text();
-      const parsedData = parseCSV(csvText);
+      const parsedData = parseDelimitedText(csvText);
 
       if (parsedData.length > 0) {
         const headers = Object.keys(parsedData[0]);
