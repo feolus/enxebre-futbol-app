@@ -172,7 +172,7 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
     };
 
     return (
-        <div className="flex items-center justify-center">
+        <div className="flex justify-center">
             <Card className="p-6 md:p-8 w-full max-w-4xl">
             <h2 className="text-3xl font-bold text-white mb-6 text-center">
                 {isEditMode ? 'Editar Jugador' : 'Registro del Jugador'}
