@@ -152,33 +152,6 @@ const App: React.FC = () => {
     }
   };
   
-  const handleAddEvent = useCallback(async (newEvent: Omit<CalendarEvent, 'id'>) => {
-    const addedEvent = await firebaseServices.addCalendarEvent(newEvent);
-    if (addedEvent) {
-      setCalendarEvents(prev => [...prev, addedEvent]);
-    }
-  }, []);
-
-  const handleUpdateEvent = useCallback(async (updatedEvent: CalendarEvent) => {
-    const success = await firebaseServices.updateCalendarEvent(updatedEvent);
-    if (success) {
-      setCalendarEvents(prevEvents => prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e));
-    }
-  }, []);
-  
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
-    const success = await firebaseServices.deleteCalendarEvent(eventId);
-    if (success) {
-      setCalendarEvents(prevEvents => prevEvents.filter(e => e.id !== eventId));
-    }
-  }, []);
-
-  const handleBatchAddPlayers = async (newPlayersData: Partial<Player>[]) => {
-    await firebaseServices.batchAddPlayers(newPlayersData);
-    const fetchedPlayers = await firebaseServices.getPlayers(); // Refetch to get all players with new IDs
-    setPlayers(fetchedPlayers);
-  };
-
   const handleCreatePlayerAuthUser = async (player: Player, password: string): Promise<void> => {
     const updatedPlayer = await firebaseServices.createPlayerAuthUser(player, password);
     setPlayers(prevPlayers => prevPlayers.map(p => p.id === updatedPlayer.id ? updatedPlayer : p));
@@ -212,14 +185,10 @@ const App: React.FC = () => {
                   players={players}
                   evaluations={evaluations}
                   calendarEvents={calendarEvents}
-                  onAddEvent={handleAddEvent}
-                  onUpdateEvent={handleUpdateEvent}
-                  onDeleteEvent={handleDeleteEvent}
                   onUpdatePlayer={handleUpdatePlayer}
                   onDeletePlayer={handleDeletePlayer}
                   onAddEvaluation={handleAddEvaluation}
                   onAddPlayer={handleAddPlayer}
-                  onBatchAddPlayers={handleBatchAddPlayers}
                   onCreatePlayerAuthUser={handleCreatePlayerAuthUser}
                 />;
       case 'club':
