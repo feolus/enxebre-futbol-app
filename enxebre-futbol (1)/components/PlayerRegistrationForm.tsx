@@ -11,7 +11,6 @@ type FormData = {
     idNumber: string;
     phone: string;
     email: string;
-    password?: string;
     position: string;
     jerseyNumber: string;
     previousClub: string;
@@ -47,7 +46,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         idNumber: '',
         phone: '',
         email: '',
-        password: '',
         position: '',
         jerseyNumber: '',
         previousClub: '',
@@ -75,7 +73,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                 idNumber: playerToEdit.idNumber || '',
                 phone: playerToEdit.contactInfo.phone || '',
                 email: playerToEdit.contactInfo.email || '',
-                password: '', // Password is not edited here
                 position: playerToEdit.position || '',
                 jerseyNumber: String(playerToEdit.jerseyNumber) || '',
                 previousClub: playerToEdit.previousClub || '',
@@ -122,11 +119,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        
-        if (!isEditMode && (!formData.password || formData.password.length < 6)) {
-             setSubmitError("La contraseña es obligatoria y debe tener al menos 6 caracteres.");
-             return;
-        }
 
         setIsSubmitting(true);
         setSubmitError(null);
@@ -135,9 +127,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
             ...formData,
             jerseyNumber: parseInt(formData.jerseyNumber, 10) || 0,
         };
-        if (isEditMode) {
-            delete (dataToSave as Partial<typeof dataToSave>).password;
-        }
 
         try {
             await onSave(dataToSave, idPhotoFile, dniFrontFile, dniBackFile);
@@ -145,24 +134,8 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
         } catch (error: any) {
             console.error("Registration/Update failed in form:", error);
             let message = "Ha ocurrido un error inesperado. Por favor, inténtalo de nuevo más tarde.";
-            if (error && typeof error.code === 'string') {
-                switch (error.code) {
-                    case 'auth/email-already-in-use':
-                        message = 'Este correo electrónico ya está registrado. Por favor, utiliza otro.';
-                        break;
-                    case 'auth/invalid-email':
-                        message = 'El formato del correo electrónico no es válido.';
-                        break;
-                    case 'auth/weak-password':
-                        message = 'La contraseña es demasiado débil. Debe tener al menos 6 caracteres.';
-                        break;
-                    case 'auth/network-request-failed':
-                         message = 'Error de red. Comprueba tu conexión a internet e inténtalo de nuevo.';
-                         break;
-                    default:
-                        message = `Error de autenticación: ${error.message}`;
-                }
-            } else if (error instanceof Error) {
+            
+            if (error instanceof Error) {
                 message = error.message;
             }
             setSubmitError(message);
@@ -204,12 +177,6 @@ const PlayerRegistrationForm: React.FC<FormProps> = ({ onClose, onSave, playerTo
                         <label htmlFor="email" className={labelStyle}>Correo Electrónico (será tu usuario)</label>
                         <input type="email" id="email" name="email" value={formData.email} className={inputStyle} placeholder="Introduce tu correo electrónico" onChange={handleChange} required disabled={isEditMode} />
                     </div>
-                    {!isEditMode && (
-                        <div>
-                            <label htmlFor="password" className={labelStyle}>Contraseña</label>
-                            <input type="password" id="password" name="password" value={formData.password} className={inputStyle} placeholder="Crea una contraseña segura (mín. 6 caracteres)" onChange={handleChange} required />
-                        </div>
-                    )}
                     <div>
                         <label htmlFor="position" className={labelStyle}>Posición</label>
                         <select id="position" name="position" value={formData.position} className={inputStyle} onChange={handleChange} required>

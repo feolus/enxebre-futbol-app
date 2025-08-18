@@ -81,16 +81,8 @@ export const getPlayers = async (): Promise<Player[]> => {
 };
 
 export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFrontFile: File | null, dniBackFile: File | null): Promise<Player> => {
-    let userCredential;
     try {
-        // 1. Create user in the secondary auth instance to avoid logging out the admin.
-        userCredential = await secondaryAuth.createUserWithEmailAndPassword(playerData.email, playerData.password);
-        const uid = userCredential.user?.uid;
-        if (!uid) {
-            throw new Error("Firebase Auth user creation failed, no UID returned.");
-        }
-        
-        // 2. Prepare player document and upload files in parallel.
+        // 1. Prepare player document and upload files.
         const playerDocRef = db.collection("players").doc();
         const newPlayerId = playerDocRef.id;
 
@@ -122,7 +114,7 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
         });
 
         const playerToAdd: Omit<Player, 'id'> = {
-            authUid: uid,
+            authUid: '', // No auth user is created at this stage. This is done later.
             photoUrl: photoUrl,
             documents: documents,
             name: `${playerData.name} ${playerData.lastName}`,
@@ -154,38 +146,14 @@ export const addPlayer = async (playerData: any, idPhotoFile: File | null, dniFr
             },
         };
 
-        // 3. Save player and user role data to Firestore using the coach's permissions.
-        const userDocRef = db.collection('users').doc(uid);
-        const batch = db.batch();
-        batch.set(playerDocRef, playerToAdd);
-        batch.set(userDocRef, { role: 'player', playerId: newPlayerId });
-        await batch.commit();
+        // 2. Save player data to Firestore.
+        await playerDocRef.set(playerToAdd);
 
-        // 4. Clean up: sign out the new user from the secondary auth instance.
-        if (secondaryAuth.currentUser) {
-            await secondaryAuth.signOut();
-        }
-
-        // 5. Return the complete new player object.
+        // 3. Return the complete new player object.
         return { id: newPlayerId, ...playerToAdd };
     } catch (error: any) {
-        // If user was created in Auth but something else failed, delete the auth user.
-        if (userCredential && userCredential.user) {
-            try {
-                // To delete, we need to be signed in as that user in the secondary instance.
-                // The user is already signed in after creation.
-                await userCredential.user.delete();
-                console.log("Successfully deleted partially created auth user.");
-            } catch (deleteError) {
-                console.error("Critical: Failed to delete partially created auth user. Manual cleanup may be required.", deleteError);
-            }
-        }
-        // Always sign out from secondary auth on failure.
-        if (secondaryAuth.currentUser) {
-            await secondaryAuth.signOut();
-        }
-        console.error("Error during player addition transaction:", error);
-        // Re-throw the original error so the UI can display a specific message
+        console.error("Error during player data addition:", error);
+        // Re-throw the original error so the UI can display a message
         throw error;
     }
 };
